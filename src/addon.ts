@@ -2,6 +2,7 @@ import { config } from "../package.json";
 import { ColumnOptions, DialogHelper } from "zotero-plugin-toolkit";
 import hooks from "./hooks";
 import { createZToolkit } from "./utils/ztoolkit";
+import PDFButton from "./modules/pdfButton";
 
 class Addon {
   public data: {
@@ -20,6 +21,7 @@ class Addon {
       rows: Array<{ [dataKey: string]: string }>;
     };
     dialog?: DialogHelper;
+    pdfButton: PDFButton;
   };
   // Lifecycle hooks
   public hooks: typeof hooks;
@@ -33,6 +35,7 @@ class Addon {
       env: __env__,
       initialized: false,
       ztoolkit: createZToolkit(),
+      pdfButton: new PDFButton(),
     };
     this.hooks = hooks;
     this.api = {};

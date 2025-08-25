@@ -1,10 +1,10 @@
-startup-begin = Addon is loading
-startup-finish = Addon is ready
-menuitem-label = Addon Template: Helper Examples
-menupopup-label = Addon Template: Menupopup
-menuitem-submenulabel = Addon Template
-menuitem-filemenulabel = Addon Template: File Menuitem
-prefs-title = Template
+startup-begin = Zotero2Eagle is loading
+startup-finish = Zotero2Eagle is ready
+menuitem-label = Zotero2Eagle: Helper Examples
+menupopup-label = Zotero2Eagle: Menupopup
+menuitem-submenulabel = Zotero2Eagle
+menuitem-filemenulabel = Zotero2Eagle: File Menuitem
+prefs-title = Zotero2Eagle
 prefs-table-title = Title
 prefs-table-detail = Detail
 tabpanel-lib-tab-label = Lib Tab

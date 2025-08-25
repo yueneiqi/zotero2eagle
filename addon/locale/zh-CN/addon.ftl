@@ -1,10 +1,10 @@
-startup-begin = 插件加载中
-startup-finish = 插件已就绪
-menuitem-label = 插件模板: 帮助工具样例
-menupopup-label = 插件模板: 弹出菜单
-menuitem-submenulabel = 插件模板：子菜单
-menuitem-filemenulabel = 插件模板: 文件菜单
-prefs-title = 插件模板
+startup-begin = Zotero2Eagle 加载中
+startup-finish = Zotero2Eagle 已就绪
+menuitem-label = Zotero2Eagle: 帮助工具样例
+menupopup-label = Zotero2Eagle: 弹出菜单
+menuitem-submenulabel = Zotero2Eagle
+menuitem-filemenulabel = Zotero2Eagle: 文件菜单
+prefs-title = Zotero2Eagle
 prefs-table-title = 标题
 prefs-table-detail = 详情
 tabpanel-lib-tab-label = 库标签

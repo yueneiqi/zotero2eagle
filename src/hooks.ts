@@ -34,6 +34,14 @@ async function onStartup() {
 
   UIExampleFactory.registerReaderItemPaneSection();
 
+  // Initialize PDF button functionality
+  addon.data.pdfButton.init({
+    id: addon.data.config.addonID,
+    version: "0.0.1", //addon.data.config.version, - this property doesn't exist in config
+    rootURI: rootURI,
+  });
+  addon.data.pdfButton.main();
+
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
   );
@@ -101,6 +109,8 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 function onShutdown(): void {
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
+  // Remove PDF button
+  addon.data.pdfButton.removeAllButtons();
   // Remove addon object
   addon.data.alive = false;
   // @ts-expect-error - Plugin instance is not typed

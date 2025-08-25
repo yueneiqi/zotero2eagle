@@ -1,9 +1,8 @@
-# Zotero Plugin Template
+# Zotero2Eagle 集成插件
 
 [![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
-[![Using Zotero Plugin Template](https://img.shields.io/badge/Using-Zotero%20Plugin%20Template-blue?style=flat-square&logo=github)](https://github.com/windingwind/zotero-plugin-template)
 
-这是 [Zotero](https://www.zotero.org/) 的插件模板。
+这是 [Zotero](https://www.zotero.org/) 的一个插件，用于与 [Eagle](https://eagle.cool/) 集成，在PDF阅读器中添加一个简单按钮，点击后显示"Hello World"。
 
 [English](../README.md) | [简体中文](./README-zhCN.md) | [Français](./README-frFR.md)
 
