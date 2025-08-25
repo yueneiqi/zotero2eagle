@@ -1,3 +1,7 @@
 .makeItRed {
   background-color: tomato;
 }
+
+#zotero2eagle-proxy-initialized {
+  display: none;
+}
