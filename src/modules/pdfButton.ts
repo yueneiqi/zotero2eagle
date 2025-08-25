@@ -72,14 +72,14 @@ class PDFButton {
     selectAreaButton.addEventListener("click", () => {
       this.log("Proxy: Select Area button clicked");
       // Register an observer to detect when annotations are created
-      this.registerAnnotationObserver();
+      this.registerAnnotationObserver(browserWindow);
     });
 
     this.log("Successfully proxied Select Area button");
   }
 
   // Register an observer to watch for new annotations
-  registerAnnotationObserver() {
+  registerAnnotationObserver(browserWindow: Window) {
     this.log("Registering annotation observer");
 
     // Register a Zotero notifier observer for item additions/changes
@@ -98,7 +98,42 @@ class PDFButton {
               if (item && item.isAnnotation()) {
                 const annotationId = item.key;
                 this.log(`New annotation detected with ID: ${annotationId}`);
-                this.showAnnotationId(annotationId);
+
+                // Get current item ID and page number
+                const currentItem =
+                  Zotero.getActiveZoteroPane()?.getSelectedItems()?.[0];
+                const currentItemId = currentItem?.id || "Unknown";
+
+                // Try to get page number from the reader
+                let pageNumber = "Unknown";
+                try {
+                  // Get the currently selected tab ID
+                  const selectedTabId = (Zotero.getMainWindow() as any)
+                    .Zotero_Tabs?.selectedID;
+                  if (selectedTabId) {
+                    const reader = Zotero.Reader.getByTabID(selectedTabId);
+                    if (reader) {
+                      // Access the page index through the internal state
+                      const state = (reader as any)._state;
+                      if (
+                        state &&
+                        state.primaryView &&
+                        typeof state.primaryView.pageIndex === "number"
+                      ) {
+                        const pageIndex = state.primaryView.pageIndex;
+                        pageNumber = (pageIndex + 1).toString(); // Convert to 1-based index
+                      }
+                    }
+                  }
+                } catch (e) {
+                  this.log(`Error getting page number: ${e}`);
+                }
+
+                this.showAnnotationDetails(
+                  annotationId,
+                  currentItemId.toString(),
+                  pageNumber,
+                );
                 // Unregister the observer after finding the annotation
                 if (this.annotationObserverID) {
                   Zotero.Notifier.unregisterObserver(this.annotationObserverID);
@@ -130,14 +165,30 @@ class PDFButton {
     }, 10000); // 10 seconds timeout
   }
 
-  // Show the annotation ID in a popup
-  showAnnotationId(annotationId: string) {
-    this.log(`Showing annotation ID: ${annotationId}`);
+  // Show the annotation details (ID, item ID, and page number) in a popup
+  showAnnotationDetails(
+    annotationId: string,
+    itemId: string,
+    pageNumber: string,
+  ) {
+    this.log(
+      `Showing annotation details - ID: ${annotationId}, Item ID: ${itemId}, Page: ${pageNumber}`,
+    );
 
-    // Create a progress window to display the annotation ID
+    // Create a progress window to display the annotation details
     const progressWindow = new ztoolkit.ProgressWindow(this.name)
       .createLine({
-        text: `Annotation ID: ${annotationId}`,
+        text: `Annotation: ${annotationId}`,
+        type: "success",
+        progress: 33,
+      })
+      .createLine({
+        text: `Item ID: ${itemId}`,
+        type: "success",
+        progress: 66,
+      })
+      .createLine({
+        text: `Page: ${pageNumber}`,
         type: "success",
         progress: 100,
       })
