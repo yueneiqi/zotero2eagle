@@ -1,4 +1,5 @@
 import { config } from "../../package.json";
+import { ImageSaver, ImageAnnotationData } from "../utils/imageSaver";
 
 class PDFButton {
   id: string | null;
@@ -124,7 +125,8 @@ class PDFButton {
                   this.log(`Error getting page number from annotation: ${e}`);
                 }
 
-                this.showAnnotationDetails(
+                await this.showAnnotationDetails(
+                  item,
                   annotationId,
                   annotationType,
                   parentItemId.toString(),
@@ -163,7 +165,8 @@ class PDFButton {
   }
 
   // Show the annotation details (ID, type, item ID, item key, and page number) in a popup
-  showAnnotationDetails(
+  async showAnnotationDetails(
+    item: any,
     annotationId: string,
     annotationType: string,
     itemId: string,
@@ -173,6 +176,34 @@ class PDFButton {
     this.log(
       `Showing annotation details - ID: ${annotationId}, Type: ${annotationType}, Item ID: ${itemId}, Item Key: ${itemKey}, Page: ${pageNumber}`,
     );
+
+    // If this is an image annotation, try to save the image to output directory
+    let imageSaveStatus = "";
+    if (annotationType === "image") {
+      try {
+        const metadata = await ImageSaver.getParentItemMetadata(item);
+        const annotationData: ImageAnnotationData = {
+          annotationId,
+          annotationType,
+          itemId,
+          itemKey,
+          pageNumber,
+          ...metadata,
+        };
+
+        const saveSuccess = await ImageSaver.saveAnnotationImage(item, annotationData);
+        if (saveSuccess) {
+          imageSaveStatus = "Image saved to output directory";
+          this.log("Image annotation saved to output directory");
+        } else {
+          imageSaveStatus = "Image save failed or disabled";
+          this.log("Failed to save image annotation or feature disabled");
+        }
+      } catch (error) {
+        imageSaveStatus = "Image save error occurred";
+        this.log(`Error saving image annotation: ${error}`);
+      }
+    }
 
     // Create a progress window to display the annotation details
     const progressWindow = new ztoolkit.ProgressWindow(this.name)
@@ -199,9 +230,27 @@ class PDFButton {
       .createLine({
         text: `Page: ${pageNumber}`,
         type: "success",
+        progress: 80,
+      });
+
+    // Add image save status line if applicable
+    if (imageSaveStatus) {
+      const statusType = imageSaveStatus.includes("saved") ? "success" : 
+                        imageSaveStatus.includes("failed") || imageSaveStatus.includes("error") ? "fail" : "default";
+      progressWindow.createLine({
+        text: imageSaveStatus,
+        type: statusType,
         progress: 100,
-      })
-      .show();
+      });
+    } else {
+      progressWindow.createLine({
+        text: "Processing completed",
+        type: "success", 
+        progress: 100,
+      });
+    }
+
+    progressWindow.show();
 
     // Close the window automatically after a few seconds
     progressWindow.startCloseTimer(5000);
