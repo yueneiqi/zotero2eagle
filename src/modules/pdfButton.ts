@@ -102,6 +102,7 @@ class PDFButton {
                 // Get the parent item ID (the PDF item)
                 const parentItem = item.parentItem;
                 const parentItemId = parentItem ? parentItem.id : "Unknown";
+                const parentItemKey = parentItem ? parentItem.key : "Unknown"; // This is the short key like "F5BWVR4N"
 
                 // Get page number directly from the annotation
                 let pageNumber = "Unknown";
@@ -125,6 +126,7 @@ class PDFButton {
                 this.showAnnotationDetails(
                   annotationId,
                   parentItemId.toString(),
+                  parentItemKey,
                   pageNumber,
                 );
                 // Unregister the observer after finding the annotation
@@ -158,14 +160,15 @@ class PDFButton {
     }, 10000); // 10 seconds timeout
   }
 
-  // Show the annotation details (ID, item ID, and page number) in a popup
+  // Show the annotation details (ID, item ID, item key, and page number) in a popup
   showAnnotationDetails(
     annotationId: string,
     itemId: string,
+    itemKey: string,
     pageNumber: string,
   ) {
     this.log(
-      `Showing annotation details - ID: ${annotationId}, Item ID: ${itemId}, Page: ${pageNumber}`,
+      `Showing annotation details - ID: ${annotationId}, Item ID: ${itemId}, Item Key: ${itemKey}, Page: ${pageNumber}`,
     );
 
     // Create a progress window to display the annotation details
@@ -173,12 +176,17 @@ class PDFButton {
       .createLine({
         text: `Annotation: ${annotationId}`,
         type: "success",
-        progress: 33,
+        progress: 25,
       })
       .createLine({
         text: `Item ID: ${itemId}`,
         type: "success",
-        progress: 66,
+        progress: 50,
+      })
+      .createLine({
+        text: `Item Key: ${itemKey}`,
+        type: "success",
+        progress: 75,
       })
       .createLine({
         text: `Page: ${pageNumber}`,
