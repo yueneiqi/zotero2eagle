@@ -233,12 +233,7 @@ export class ImageSaver {
       }
 
       const [, extension, base64Data] = matches;
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
+      
       // Generate filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const safeTitle = this.sanitizeFileName(
@@ -250,8 +245,36 @@ export class ImageSaver {
       const separator = Zotero.isWin ? "\\" : "/";
       const filePath = `${outputDir}${separator}${filename}`;
       
-      // Write file
-      await Zotero.File.putContentsAsync(filePath, bytes.buffer);
+      // Write file using Zotero's file API
+      await this.log(`Writing file to: ${filePath}`);
+      
+      try {
+        // Convert base64 to ArrayBuffer for proper binary writing
+        await this.log("Converting base64 to ArrayBuffer for binary write");
+        const binaryString = atob(base64Data);
+        const bytes = new ArrayBuffer(binaryString.length);
+        const byteView = new Uint8Array(bytes);
+        for (let i = 0; i < binaryString.length; i++) {
+          byteView[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Write as binary ArrayBuffer
+        await Zotero.File.putContentsAsync(filePath, bytes);
+        await this.log("Successfully wrote binary data to file");
+        
+      } catch (writeError) {
+        await this.log(`Binary write failed, trying string write: ${writeError}`, "WARN");
+        
+        try {
+          // Fallback: write as binary string directly
+          const binaryString = atob(base64Data);
+          await Zotero.File.putContentsAsync(filePath, binaryString);
+          await this.log("Successfully wrote as binary string");
+        } catch (stringWriteError) {
+          await this.log(`String write also failed: ${stringWriteError}`, "ERROR");
+          throw stringWriteError;
+        }
+      }
       
       await this.log(`Saved image: ${filename}`);
       return filePath;
