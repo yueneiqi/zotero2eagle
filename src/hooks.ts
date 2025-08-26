@@ -113,6 +113,7 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 
 async function onShutdown(): Promise<void> {
   await FileLogger.info("Shutdown", "Zotero2Eagle plugin shutting down");
+  await addon.data.taskPool.drain();
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
   // Remove PDF button
