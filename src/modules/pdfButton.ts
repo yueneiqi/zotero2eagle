@@ -44,7 +44,7 @@ class PDFButton {
   }
 
   // Proxy the existing "Select Area" button instead of creating a new one
-  proxySelectAreaButton(browserWindow: Window) {
+  async proxySelectAreaButton(browserWindow: Window) {
     // Check if we've already proxied the button
     if (
       browserWindow.document.querySelector("#zotero2eagle-proxy-initialized")
@@ -53,12 +53,12 @@ class PDFButton {
       return;
     }
 
-    // Find the existing "Select Area" button in Zotero's toolbar
-    const selectAreaButton = browserWindow.document.querySelector(
-      "button[title='Select Area']",
-    ) as HTMLButtonElement;
+    // Try to find the button with retry and multiple strategies
+    const selectAreaButton = await this.findSelectAreaButton(browserWindow);
     if (!selectAreaButton) {
-      this.log("proxySelectAreaButton: Select Area button not found");
+      this.log(
+        "proxySelectAreaButton: Select Area button not found after all attempts",
+      );
       return;
     }
 
@@ -78,6 +78,116 @@ class PDFButton {
     });
 
     this.log("Successfully proxied Select Area button");
+  }
+
+  // Find the Select Area button with multiple strategies and retry mechanism
+  private async findSelectAreaButton(
+    browserWindow: Window,
+  ): Promise<HTMLButtonElement | null> {
+    const selectors = [
+      // Common selectors for the Select Area button
+      "button[title='Select Area']",
+      "button[data-l10n-id*='select-area']",
+      "button[aria-label*='Select Area']",
+      "button[aria-label*='select area']",
+      ".toolbar button[title*='Select']",
+      ".toolbar button[title*='Area']",
+      // Additional selectors for different Zotero versions
+      ".splitButton button[title='Select Area']",
+      ".toolbar-button[title='Select Area']",
+      "button[id*='select-area']",
+      "button[class*='select-area']",
+      // Generic fallback selectors
+      "button:has([data-l10n-id*='select-area'])",
+      "button:has([aria-label*='Select Area'])",
+    ];
+
+    const maxRetries = 10;
+    const retryDelay = 500; // 500ms
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      this.log(`Attempt ${attempt} to find Select Area button`);
+
+      // Try each selector strategy
+      for (const selector of selectors) {
+        try {
+          const button = browserWindow.document.querySelector(
+            selector,
+          ) as HTMLButtonElement;
+          if (button && this.isValidSelectAreaButton(button)) {
+            this.log(`Found Select Area button using selector: ${selector}`);
+            return button;
+          }
+        } catch (error) {
+          // Some selectors might fail in certain browsers, continue to next
+          continue;
+        }
+      }
+
+      // Try finding by text content as fallback
+      const buttonByText = this.findButtonByText(browserWindow);
+      if (buttonByText) {
+        this.log("Found Select Area button by text content");
+        return buttonByText;
+      }
+
+      // Wait before next attempt (except for the last attempt)
+      if (attempt < maxRetries) {
+        this.log(
+          `Select Area button not found, waiting ${retryDelay}ms before retry ${attempt + 1}`,
+        );
+        await this.sleep(retryDelay);
+      }
+    }
+
+    this.log("Select Area button not found after all attempts and strategies");
+    return null;
+  }
+
+  // Validate that the found button is actually the Select Area button
+  private isValidSelectAreaButton(button: HTMLButtonElement): boolean {
+    if (!button) return false;
+
+    const title = button.title?.toLowerCase() || "";
+    const ariaLabel = button.getAttribute("aria-label")?.toLowerCase() || "";
+    const className = button.className?.toLowerCase() || "";
+    const id = button.id?.toLowerCase() || "";
+
+    // Check if it matches expected patterns
+    const selectAreaPatterns = ["select area", "select-area", "selectarea"];
+
+    return selectAreaPatterns.some(
+      (pattern) =>
+        title.includes(pattern) ||
+        ariaLabel.includes(pattern) ||
+        className.includes(pattern) ||
+        id.includes(pattern),
+    );
+  }
+
+  // Find button by text content as fallback
+  private findButtonByText(browserWindow: Window): HTMLButtonElement | null {
+    const buttons = browserWindow.document.querySelectorAll("button");
+
+    for (const button of buttons) {
+      const textContent = button.textContent?.toLowerCase() || "";
+      const innerHTML = button.innerHTML?.toLowerCase() || "";
+
+      if (
+        textContent.includes("select area") ||
+        innerHTML.includes("select area") ||
+        (textContent.includes("select") && textContent.includes("area"))
+      ) {
+        return button as HTMLButtonElement;
+      }
+    }
+
+    return null;
+  }
+
+  // Helper method to sleep/wait
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // Register an observer to watch for new annotations
@@ -271,7 +381,7 @@ class PDFButton {
     progressWindow.startCloseTimer(5000);
   }
 
-  addAllButtons() {
+  async addAllButtons() {
     this.log("proxy button for all open tabs");
     const windows = Zotero.getMainWindows();
     for (const win of windows) {
@@ -279,7 +389,10 @@ class PDFButton {
       const browsers = win.document.querySelectorAll("browser.reader");
       for (const bro of browsers) {
         const browserWindow = bro.contentWindow;
-        this.proxySelectAreaButton(browserWindow);
+        // Run async but don't wait for completion to avoid blocking
+        this.proxySelectAreaButton(browserWindow).catch((error) =>
+          this.log(`Error proxying button: ${error}`, "ERROR"),
+        );
       }
     }
   }
@@ -309,8 +422,8 @@ class PDFButton {
 
   async main() {
     // Add proxy to existing tabs
-    setTimeout(() => {
-      this.addAllButtons();
+    setTimeout(async () => {
+      await this.addAllButtons();
     }, 1000);
 
     // Register tab listener to add proxy to new tabs
@@ -331,7 +444,10 @@ class PDFButton {
           await reader._initPromise;
           const browserWindow = reader._iframeWindow;
           if (browserWindow) {
-            this.proxySelectAreaButton(browserWindow);
+            // Run async but don't wait for completion to avoid blocking
+            this.proxySelectAreaButton(browserWindow).catch((error) =>
+              this.log(`Error proxying button: ${error}`, "ERROR"),
+            );
           }
         }
       },
