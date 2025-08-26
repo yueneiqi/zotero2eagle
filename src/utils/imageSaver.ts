@@ -105,15 +105,19 @@ export class ImageSaver {
       await this.log("Attempting to extract image from annotation");
 
       // First, try to access the internal _annotationImage property
-      if ((item as any)._annotationImage) {
+      const _annotationImage = (item as any)._annotationImage;
+      await this.log(`Checking _annotationImage: ${_annotationImage ? `exists, type: ${typeof _annotationImage}, length: ${_annotationImage.length || 'N/A'}` : 'null/undefined'}`, "DEBUG");
+      if (_annotationImage) {
         await this.log("Found image data in item._annotationImage");
-        return (item as any)._annotationImage;
+        return _annotationImage;
       }
 
       // Try the public annotationImage property
-      if (item.annotationImage) {
+      const annotationImage = item.annotationImage;
+      await this.log(`Checking annotationImage: ${annotationImage ? `exists, type: ${typeof annotationImage}, length: ${annotationImage.length || 'N/A'}` : 'null/undefined'}`, "DEBUG");
+      if (annotationImage) {
         await this.log("Found image data in item.annotationImage");
-        return item.annotationImage;
+        return annotationImage;
       }
 
       // In Zotero 7+, image annotations may have associated image data
@@ -140,6 +144,28 @@ export class ImageSaver {
       if (annotationText && annotationText.startsWith("data:image/")) {
         await this.log("Found image data in annotation text");
         return annotationText;
+      }
+
+      // Try to get image data using Zotero's annotation methods
+      try {
+        // Check if the annotation has a getAnnotationImage method
+        if (typeof (item as any).getAnnotationImage === 'function') {
+          await this.log("Trying item.getAnnotationImage() method");
+          const imageData = await (item as any).getAnnotationImage();
+          if (imageData) {
+            await this.log(`Got image data from getAnnotationImage: ${typeof imageData}, length: ${imageData.length || 'N/A'}`);
+            return imageData;
+          }
+        }
+
+        // Check if there's an image property in the annotation's JSON representation
+        const jsonData = item.toJSON ? item.toJSON() : null;
+        if (jsonData && jsonData.annotationImage) {
+          await this.log("Found image in toJSON().annotationImage");
+          return jsonData.annotationImage;
+        }
+      } catch (e) {
+        await this.log(`Error trying annotation methods: ${e}`, "DEBUG");
       }
 
       // Check for child attachments (less likely but possible)
@@ -176,10 +202,27 @@ export class ImageSaver {
         const value = (item as any)[prop];
         if (value !== undefined && value !== null) {
           const valueType = typeof value;
-          const valueInfo = valueType === 'string' 
-            ? `string(${value.length} chars)${value.startsWith('data:') ? ' [data URL]' : ''}`
-            : `${valueType}`;
+          let valueInfo = `${valueType}`;
+          
+          if (valueType === 'string') {
+            valueInfo += `(${value.length} chars)${value.startsWith('data:') ? ' [data URL]' : ''}`;
+            // Show first 100 chars for debugging
+            if (value.length > 0) {
+              valueInfo += ` - starts with: "${value.substring(0, 100)}..."`;
+            }
+          } else if (valueType === 'object' && value !== null) {
+            valueInfo += ` - keys: [${Object.keys(value).join(', ')}]`;
+          }
+          
           await this.log(`Found property ${prop}: ${valueInfo}`, "DEBUG");
+          
+          // If it's a string and looks like image data, try to return it
+          if (valueType === 'string' && value.startsWith('data:image/')) {
+            await this.log(`Using ${prop} as image data source`);
+            return value;
+          }
+        } else {
+          await this.log(`Property ${prop}: ${value}`, "DEBUG");
         }
       }
       

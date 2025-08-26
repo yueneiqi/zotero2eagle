@@ -134,6 +134,16 @@ class PDFButton {
                   parentItemKey,
                   pageNumber,
                 );
+
+                // If this is an image annotation, try to capture it from the PDF reader
+                if (annotationType === "image") {
+                  await this.log("Image annotation detected, attempting to capture from PDF reader", "DEBUG");
+                  try {
+                    await this.captureImageFromPDFReader(item, annotationId, pageNumber);
+                  } catch (error) {
+                    await this.log(`Error capturing image from PDF reader: ${error}`, "ERROR");
+                  }
+                }
                 // Unregister the observer after finding the annotation
                 if (this.annotationObserverID) {
                   Zotero.Notifier.unregisterObserver(this.annotationObserverID);
