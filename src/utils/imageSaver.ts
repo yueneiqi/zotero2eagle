@@ -248,31 +248,39 @@ export class ImageSaver {
       // Write file using Zotero's file API
       await this.log(`Writing file to: ${filePath}`);
       
+      // Convert the data URI to a Blob (like Zotero does internally)
+      await this.log("Converting data URI to Blob for proper binary writing");
+      
       try {
-        // Convert base64 to ArrayBuffer for proper binary writing
-        await this.log("Converting base64 to ArrayBuffer for binary write");
-        const binaryString = atob(base64Data);
-        const bytes = new ArrayBuffer(binaryString.length);
-        const byteView = new Uint8Array(bytes);
-        for (let i = 0; i < binaryString.length; i++) {
-          byteView[i] = binaryString.charCodeAt(i);
-        }
+        // Method 1: Use the browser's fetch API to create a proper blob, then convert to ArrayBuffer
+        const response = await fetch(imageDataUrl);
+        const blob = await response.blob();
+        await this.log(`Created blob with size: ${blob.size} bytes, type: ${blob.type}`);
         
-        // Write as binary ArrayBuffer
-        await Zotero.File.putContentsAsync(filePath, bytes);
-        await this.log("Successfully wrote binary data to file");
+        // Convert blob to ArrayBuffer for Zotero.File.putContentsAsync
+        const arrayBuffer = await blob.arrayBuffer();
+        await Zotero.File.putContentsAsync(filePath, arrayBuffer);
+        await this.log("Successfully wrote blob ArrayBuffer to file");
         
-      } catch (writeError) {
-        await this.log(`Binary write failed, trying string write: ${writeError}`, "WARN");
+      } catch (blobError) {
+        await this.log(`Blob write failed, trying manual conversion: ${blobError}`, "WARN");
         
         try {
-          // Fallback: write as binary string directly
+          // Method 2: Manual conversion to ArrayBuffer (keeping binary integrity)
           const binaryString = atob(base64Data);
-          await Zotero.File.putContentsAsync(filePath, binaryString);
-          await this.log("Successfully wrote as binary string");
-        } catch (stringWriteError) {
-          await this.log(`String write also failed: ${stringWriteError}`, "ERROR");
-          throw stringWriteError;
+          const buffer = new ArrayBuffer(binaryString.length);
+          const bytes = new Uint8Array(buffer);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Write as ArrayBuffer (proper binary format)
+          await Zotero.File.putContentsAsync(filePath, buffer);
+          await this.log("Successfully wrote manual ArrayBuffer to file");
+          
+        } catch (arrayError) {
+          await this.log(`Array write failed: ${arrayError}`, "ERROR");
+          throw arrayError;
         }
       }
       
