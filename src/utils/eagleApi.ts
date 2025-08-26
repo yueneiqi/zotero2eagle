@@ -241,11 +241,27 @@ export class EagleApi {
 
   static generateZoteroItemUrl(
     itemKey: string,
-    libraryType: string = "user",
+    pageNumber?: string,
+    annotationId?: string,
+    libraryType: string = "library",
   ): string {
-    // Generate Zotero web library URL for the item
-    // Format: zotero://select/library/items/{itemKey}
-    return `zotero://select/library/items/${itemKey}`;
+    // Generate Zotero PDF URL with page and annotation
+    // Format: zotero://open-pdf/library/items/{itemKey}?page={page}&annotation={annotationId}
+    let url = `zotero://open-pdf/${libraryType}/items/${itemKey}`;
+
+    const params = [];
+    if (pageNumber) {
+      params.push(`page=${pageNumber}`);
+    }
+    if (annotationId) {
+      params.push(`annotation=${annotationId}`);
+    }
+
+    if (params.length > 0) {
+      url += `?${params.join("&")}`;
+    }
+
+    return url;
   }
 
   static generateZoteroWebUrl(itemKey: string, userId?: string): string {

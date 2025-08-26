@@ -471,8 +471,12 @@ export class ImageSaver {
     try {
       await this.log("Attempting to save image to Eagle");
 
-      // Generate Zotero link for the item
-      const zoteroUrl = EagleApi.generateZoteroItemUrl(annotationData.itemKey);
+      // Generate Zotero link for the item with page and annotation info
+      const zoteroUrl = EagleApi.generateZoteroItemUrl(
+        annotationData.itemKey,
+        annotationData.pageNumber,
+        annotationData.annotationId,
+      );
 
       // Prepare Eagle item data
       const eagleItem: EagleItemFromPath = {
