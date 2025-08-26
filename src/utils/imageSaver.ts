@@ -79,6 +79,19 @@ export class ImageSaver {
         return false;
       }
 
+      // Try to save to Eagle first if integration is enabled (uses cache directly)
+      const eagleIntegrationEnabled = getPref("enableEagleIntegration");
+      if (eagleIntegrationEnabled) {
+        await this.saveToEagleDirect(item, annotationData);
+      }
+
+      // Only proceed with local backup if output directory is configured
+      if (!expandedOutputDir || expandedOutputDir.trim() === "") {
+        await this.log("No output directory configured, skipping local backup");
+        // If Eagle integration worked and no local backup needed, consider it success
+        return eagleIntegrationEnabled;
+      }
+
       const imageData = await this.extractImageFromAnnotation(item);
       if (!imageData) {
         await this.log("No image data found in annotation", "WARN");
@@ -109,12 +122,6 @@ export class ImageSaver {
           annotationData.annotationId,
           filename,
         );
-
-        // Try to save to Eagle if integration is enabled
-        const eagleIntegrationEnabled = getPref("enableEagleIntegration");
-        if (eagleIntegrationEnabled) {
-          await this.saveToEagle(filePath, annotationData);
-        }
 
         return true;
       }
@@ -464,12 +471,26 @@ export class ImageSaver {
     }
   }
 
-  private static async saveToEagle(
-    filePath: string,
+  private static async saveToEagleDirect(
+    item: any,
     annotationData: ImageAnnotationData,
   ): Promise<void> {
     try {
-      await this.log("Attempting to save image to Eagle");
+      await this.log(
+        "Attempting to save image to Eagle using cache path directly",
+      );
+
+      // Wait for cache image to be available
+      const cachePath = await this.waitForCacheImage(
+        annotationData.annotationId,
+      );
+      if (!cachePath) {
+        await this.log(
+          "Cache image not available, cannot save to Eagle",
+          "WARN",
+        );
+        return;
+      }
 
       // Generate Zotero link for the item with page and annotation info
       const zoteroUrl = EagleApi.generateZoteroItemUrl(
@@ -478,10 +499,17 @@ export class ImageSaver {
         annotationData.annotationId,
       );
 
-      // Prepare Eagle item data
+      // Generate proper filename for Eagle
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeTitle = this.sanitizeFileName(
+        annotationData.title || "Unknown",
+      );
+      const filename = `${safeTitle}_${annotationData.itemKey}_p${annotationData.pageNumber}_${timestamp}.png`;
+
+      // Prepare Eagle item data using cache path directly
       const eagleItem: EagleItemFromPath = {
-        path: filePath,
-        name: `${annotationData.title || "Unknown"} - Page ${annotationData.pageNumber}`,
+        path: cachePath,
+        name: filename,
         website: zoteroUrl,
         annotation: this.generateEagleAnnotation(annotationData),
         tags: this.generateEagleTags(annotationData),
@@ -493,11 +521,11 @@ export class ImageSaver {
         await EagleApi.addItemFromPath(eagleItem);
 
       if (response.status === "success") {
-        await this.log("Successfully saved image to Eagle");
+        await this.log("Successfully saved image to Eagle from cache");
         await FileLogger.log(
           "INFO",
           "ImageSaver",
-          `Eagle integration: Image saved for annotation ${annotationData.annotationId}`,
+          `Eagle integration: Image saved directly from cache for annotation ${annotationData.annotationId}`,
         );
       } else {
         await this.log(
@@ -506,7 +534,7 @@ export class ImageSaver {
         );
       }
     } catch (error) {
-      await this.log(`Error saving to Eagle: ${error}`, "ERROR");
+      await this.log(`Error saving to Eagle directly: ${error}`, "ERROR");
     }
   }
 
