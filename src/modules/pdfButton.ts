@@ -5,6 +5,7 @@ import {
   ImageSaveResult,
 } from "../utils/imageSaver";
 import { FileLogger } from "../utils/fileLogger";
+import { getPref, setPref } from "../utils/prefs";
 
 class PDFButton {
   id: string | null;
@@ -82,6 +83,33 @@ class PDFButton {
     });
 
     this.log("Successfully proxied Select Area button");
+  }
+
+  addToggleButton(browserWindow: Window) {
+    const doc = browserWindow.document;
+    if (doc.getElementById("zotero2eagle-toggle")) {
+      return;
+    }
+    const toolbar = doc.querySelector(".toolbar");
+    if (!toolbar) {
+      return;
+    }
+    const button = doc.createElement("button");
+    button.id = "zotero2eagle-toggle";
+    button.className = "toolbarButton";
+    const update = () => {
+      const enabled = getPref("enableEagleIntegration") as boolean;
+      button.textContent = enabled ? "Eagle On" : "Eagle Off";
+      button.setAttribute("aria-pressed", String(enabled));
+    };
+    update();
+    button.addEventListener("click", () => {
+      const enabled = getPref("enableEagleIntegration") as boolean;
+      setPref("enableEagleIntegration", !enabled);
+      update();
+    });
+    toolbar.appendChild(button);
+    this.log("Added Eagle toggle button");
   }
 
   // Find the Select Area button with multiple strategies and retry mechanism
@@ -394,6 +422,7 @@ class PDFButton {
         this.proxySelectAreaButton(browserWindow).catch((error) =>
           this.log(`Error proxying button: ${error}`, "ERROR"),
         );
+        this.addToggleButton(browserWindow);
       }
     }
   }
@@ -449,6 +478,7 @@ class PDFButton {
             this.proxySelectAreaButton(browserWindow).catch((error) =>
               this.log(`Error proxying button: ${error}`, "ERROR"),
             );
+            this.addToggleButton(browserWindow);
           }
         }
       },
