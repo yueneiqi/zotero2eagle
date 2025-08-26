@@ -20,8 +20,6 @@ export type FluentMessageId =
   | 'pref-eagle-folder'
   | 'pref-eagle-folder-help'
   | 'pref-eagle-section'
-  | 'pref-enable-eagle'
-  | 'pref-enable-eagle-help'
   | 'pref-help'
   | 'pref-output-dir'
   | 'pref-output-dir-help'

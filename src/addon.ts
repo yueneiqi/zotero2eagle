@@ -1,6 +1,7 @@
 import { config } from "../package.json";
 import { ColumnOptions, DialogHelper } from "zotero-plugin-toolkit";
 import hooks from "./hooks";
+import TaskPool from "./utils/taskPool";
 import { createZToolkit } from "./utils/ztoolkit";
 import PDFButton from "./modules/pdfButton";
 
@@ -22,6 +23,8 @@ class Addon {
     };
     dialog?: DialogHelper;
     pdfButton: PDFButton;
+    enableEagle: boolean;
+    taskPool: TaskPool;
   };
   // Lifecycle hooks
   public hooks: typeof hooks;
@@ -36,6 +39,8 @@ class Addon {
       initialized: false,
       ztoolkit: createZToolkit(),
       pdfButton: new PDFButton(),
+      enableEagle: false,
+      taskPool: new TaskPool(),
     };
     this.hooks = hooks;
     this.api = {};

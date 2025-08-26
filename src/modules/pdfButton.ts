@@ -5,6 +5,8 @@ import {
   ImageSaveResult,
 } from "../utils/imageSaver";
 import { FileLogger } from "../utils/fileLogger";
+import { setPref } from "../utils/prefs";
+import { SELECT_AREA_MAX_RETRIES, SELECT_AREA_RETRY_DELAY } from "../config";
 
 class PDFButton {
   id: string | null;
@@ -84,6 +86,28 @@ class PDFButton {
     this.log("Successfully proxied Select Area button");
   }
 
+  insertToggleButton(browserWindow: Window) {
+    const doc = browserWindow.document;
+    if (doc.getElementById("zotero2eagle-toggle")) return;
+    const toolbar = doc.querySelector(".toolbar");
+    if (!toolbar) {
+      this.log("insertToggleButton: toolbar not found");
+      return;
+    }
+    const button = doc.createElement("button");
+    button.id = "zotero2eagle-toggle";
+    const update = () => {
+      button.textContent = addon.data.enableEagle ? "Eagle On" : "Eagle Off";
+    };
+    update();
+    button.addEventListener("click", () => {
+      addon.data.enableEagle = !addon.data.enableEagle;
+      setPref("enableEagleIntegration", addon.data.enableEagle);
+      update();
+    });
+    toolbar.appendChild(button);
+  }
+
   // Find the Select Area button with multiple strategies and retry mechanism
   private async findSelectAreaButton(
     browserWindow: Window,
@@ -106,8 +130,8 @@ class PDFButton {
       "button:has([aria-label*='Select Area'])",
     ];
 
-    const maxRetries = 10;
-    const retryDelay = 500; // 500ms
+    const maxRetries = SELECT_AREA_MAX_RETRIES;
+    const retryDelay = SELECT_AREA_RETRY_DELAY;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       this.log(`Attempt ${attempt} to find Select Area button`);
@@ -242,13 +266,15 @@ class PDFButton {
                   this.log(`Error getting page number from annotation: ${e}`);
                 }
 
-                await this.showAnnotationDetails(
-                  item,
-                  annotationId,
-                  annotationType,
-                  parentItemId.toString(),
-                  parentItemKey,
-                  pageNumber,
+                addon.data.taskPool.add(() =>
+                  this.showAnnotationDetails(
+                    item,
+                    annotationId,
+                    annotationType,
+                    parentItemId.toString(),
+                    parentItemKey,
+                    pageNumber,
+                  )
                 );
 
                 // Note: Image capture will be handled by the ImageSaver utility
@@ -299,7 +325,7 @@ class PDFButton {
     // If this is an image annotation, try to save the image
     let imageSaveStatus = "";
     let imageSaveSuccess = false;
-    if (annotationType === "image") {
+    if (annotationType === "image" && addon.data.enableEagle) {
       try {
         const metadata = await ImageSaver.getParentItemMetadata(item);
         const annotationData: ImageAnnotationData = {
@@ -330,6 +356,9 @@ class PDFButton {
         imageSaveSuccess = false;
         await this.log(`Error saving image annotation: ${error}`, "ERROR");
       }
+    } else if (annotationType === "image") {
+      imageSaveStatus = "Eagle integration disabled";
+      imageSaveSuccess = false;
     }
 
     // Create a progress window to display the annotation details
@@ -394,6 +423,7 @@ class PDFButton {
         this.proxySelectAreaButton(browserWindow).catch((error) =>
           this.log(`Error proxying button: ${error}`, "ERROR"),
         );
+        this.insertToggleButton(browserWindow);
       }
     }
   }
@@ -449,6 +479,7 @@ class PDFButton {
             this.proxySelectAreaButton(browserWindow).catch((error) =>
               this.log(`Error proxying button: ${error}`, "ERROR"),
             );
+            this.insertToggleButton(browserWindow);
           }
         }
       },

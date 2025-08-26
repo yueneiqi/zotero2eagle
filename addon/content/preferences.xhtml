@@ -57,21 +57,6 @@
   <!-- Eagle Integration Settings -->
   <vbox>
     <html:label data-l10n-id="pref-eagle-section"></html:label>
-
-    <!-- Enable Eagle Integration -->
-    <hbox>
-      <html:input
-        type="checkbox"
-        id="zotero-prefpane-__addonRef__-enable-eagle"
-        preference="enableEagleIntegration"
-      ></html:input>
-      <html:label
-        for="zotero-prefpane-__addonRef__-enable-eagle"
-        data-l10n-id="pref-enable-eagle"
-      ></html:label>
-    </hbox>
-    <html:div data-l10n-id="pref-enable-eagle-help"></html:div>
-
     <!-- Eagle Folder ID -->
     <vbox>
       <html:label
@@ -125,11 +110,10 @@
   groupbox[onload*="__addonInstance__"] hbox { align-items: center; margin-top:
   20px; padding-top: 16px; border-top: 1px solid #eee; } /* TODO: the text of
   button is a little bit low. fix it later */ /* Button styling - specific to
-  our test connection button */ button[id*="__addonRef__"] { padding: 9px 16px
-  7px 16px; background: #0060df; color: black !important; border: none;
+  our test connection button */ button[id*="__addonRef__"] { padding: 8px 16px; display: inline-flex; align-items: center; justify-content: center; background: #0060df; color: black !important; border: none;
   border-radius: 4px; font-size: 13px; font-weight: 500; font-family: inherit;
   cursor: pointer; transition: background-color 0.2s ease; min-height: auto;
-  line-height: 1; text-align: center; vertical-align: middle; white-space:
+  line-height: 1; text-align: center; white-space:
   nowrap; } button[id*="__addonRef__"]:hover { background: #003eaa; }
   button[id*="__addonRef__"]:active { background: #002275; }
   button[id*="__addonRef__"]:disabled { background: #ccc; cursor: not-allowed; }
