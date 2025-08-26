@@ -5,8 +5,20 @@ export class FileLogger {
 
   static async initializeLogger(): Promise<void> {
     try {
-      const outputDir = getPref("outputDirectory") as string;
+      let outputDir = getPref("outputDirectory") as string;
       if (outputDir && outputDir.trim() !== "") {
+        // Expand tilde (~) to home directory if present
+        if (outputDir.startsWith('~')) {
+          try {
+            const homePath = (Components as any).classes["@mozilla.org/file/directory_service;1"]
+              .getService((Components as any).interfaces.nsIProperties)
+              .get("Home", (Components as any).interfaces.nsIFile).path;
+            outputDir = outputDir.replace('~', homePath);
+          } catch (e) {
+            console.warn("Failed to expand home directory in logger:", e);
+          }
+        }
+
         // Create logs subdirectory in output directory
         const outputDirNS = Zotero.File.pathToFile(outputDir);
         if (!outputDirNS.exists()) {

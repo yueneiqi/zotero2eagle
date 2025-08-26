@@ -32,7 +32,32 @@ export class ImageSaver {
         return false;
       }
 
-      await this.log(`Output directory configured: ${outputDir}`);
+      // Expand tilde (~) to home directory if present
+      let expandedOutputDir = outputDir;
+      if (outputDir.startsWith('~')) {
+        try {
+          // Use OS-specific approach to get home directory
+          const os = Zotero.isWin ? 'win' : (Zotero.isMac ? 'mac' : 'linux');
+          let homePath = '';
+          
+          if (os === 'win') {
+            homePath = (Components as any).classes["@mozilla.org/file/directory_service;1"]
+              .getService((Components as any).interfaces.nsIProperties)
+              .get("Home", (Components as any).interfaces.nsIFile).path;
+          } else {
+            // Unix-like systems (Mac, Linux)
+            homePath = (Components as any).classes["@mozilla.org/file/directory_service;1"]
+              .getService((Components as any).interfaces.nsIProperties)  
+              .get("Home", (Components as any).interfaces.nsIFile).path;
+          }
+          
+          expandedOutputDir = outputDir.replace('~', homePath);
+        } catch (e) {
+          await this.log(`Failed to expand home directory: ${e}`, "WARN");
+        }
+      }
+
+      await this.log(`Output directory configured: ${outputDir} (expanded: ${expandedOutputDir})`);
 
       if (!item || !item.isAnnotation()) {
         await this.log("Invalid item provided - not an annotation", "ERROR");
@@ -50,7 +75,7 @@ export class ImageSaver {
 
       const filePath = await this.saveImageToDirectory(
         imageData,
-        outputDir,
+        expandedOutputDir,
         annotationData,
       );
       
@@ -78,6 +103,18 @@ export class ImageSaver {
       }
 
       await this.log("Attempting to extract image from annotation");
+
+      // First, try to access the internal _annotationImage property
+      if ((item as any)._annotationImage) {
+        await this.log("Found image data in item._annotationImage");
+        return (item as any)._annotationImage;
+      }
+
+      // Try the public annotationImage property
+      if (item.annotationImage) {
+        await this.log("Found image data in item.annotationImage");
+        return item.annotationImage;
+      }
 
       // In Zotero 7+, image annotations may have associated image data
       // Check if the annotation has an image property in its annotation data
@@ -128,6 +165,23 @@ export class ImageSaver {
       // For debugging, log what properties the annotation has
       await this.log(`Annotation properties: ${Object.keys(item).join(", ")}`, "DEBUG");
       await this.log(`Annotation type: ${item.annotationType}, hasText: ${!!item.annotationText}, hasComment: ${!!item.annotationComment}`, "DEBUG");
+      
+      // Check for various image-related properties
+      const imageProps = [
+        '_annotationImage', 'annotationImage', '_image', 'image',
+        'annotationData', '_annotationData', 'data', '_data'
+      ];
+      
+      for (const prop of imageProps) {
+        const value = (item as any)[prop];
+        if (value !== undefined && value !== null) {
+          const valueType = typeof value;
+          const valueInfo = valueType === 'string' 
+            ? `string(${value.length} chars)${value.startsWith('data:') ? ' [data URL]' : ''}`
+            : `${valueType}`;
+          await this.log(`Found property ${prop}: ${valueInfo}`, "DEBUG");
+        }
+      }
       
       await this.log("No image data found in annotation", "WARN");
       return null;
