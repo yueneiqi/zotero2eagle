@@ -97,7 +97,8 @@ class PDFButton {
               const item = await Zotero.Items.getAsync(id as number);
               if (item && item.isAnnotation()) {
                 const annotationId = item.key;
-                this.log(`New annotation detected with ID: ${annotationId}`);
+                const annotationType = item.annotationType;
+                this.log(`New annotation detected with ID: ${annotationId}, Type: ${annotationType}`);
 
                 // Get the parent item ID (the PDF item)
                 const parentItem = item.parentItem;
@@ -125,6 +126,7 @@ class PDFButton {
 
                 this.showAnnotationDetails(
                   annotationId,
+                  annotationType,
                   parentItemId.toString(),
                   parentItemKey,
                   pageNumber,
@@ -160,15 +162,16 @@ class PDFButton {
     }, 10000); // 10 seconds timeout
   }
 
-  // Show the annotation details (ID, item ID, item key, and page number) in a popup
+  // Show the annotation details (ID, type, item ID, item key, and page number) in a popup
   showAnnotationDetails(
     annotationId: string,
+    annotationType: string,
     itemId: string,
     itemKey: string,
     pageNumber: string,
   ) {
     this.log(
-      `Showing annotation details - ID: ${annotationId}, Item ID: ${itemId}, Item Key: ${itemKey}, Page: ${pageNumber}`,
+      `Showing annotation details - ID: ${annotationId}, Type: ${annotationType}, Item ID: ${itemId}, Item Key: ${itemKey}, Page: ${pageNumber}`,
     );
 
     // Create a progress window to display the annotation details
@@ -176,17 +179,22 @@ class PDFButton {
       .createLine({
         text: `Annotation: ${annotationId}`,
         type: "success",
-        progress: 25,
+        progress: 20,
+      })
+      .createLine({
+        text: `Type: ${annotationType}`,
+        type: "success",
+        progress: 40,
       })
       .createLine({
         text: `Item ID: ${itemId}`,
         type: "success",
-        progress: 50,
+        progress: 60,
       })
       .createLine({
         text: `Item Key: ${itemKey}`,
         type: "success",
-        progress: 75,
+        progress: 80,
       })
       .createLine({
         text: `Page: ${pageNumber}`,
