@@ -1,5 +1,6 @@
 import { getPref } from "./prefs";
 import { FileLogger } from "./fileLogger";
+import { EagleApi, EagleItemFromPath, EagleApiResponse } from "./eagleApi";
 
 export interface ImageAnnotationData {
   annotationId: string;
@@ -108,6 +109,13 @@ export class ImageSaver {
           annotationData.annotationId,
           filename,
         );
+
+        // Try to save to Eagle if integration is enabled
+        const eagleIntegrationEnabled = getPref("enableEagleIntegration");
+        if (eagleIntegrationEnabled) {
+          await this.saveToEagle(filePath, annotationData);
+        }
+
         return true;
       }
 
@@ -454,5 +462,91 @@ export class ImageSaver {
       await this.log(`Error getting parent item metadata: ${error}`, "ERROR");
       return {};
     }
+  }
+
+  private static async saveToEagle(
+    filePath: string,
+    annotationData: ImageAnnotationData,
+  ): Promise<void> {
+    try {
+      await this.log("Attempting to save image to Eagle");
+
+      // Generate Zotero link for the item
+      const zoteroUrl = EagleApi.generateZoteroItemUrl(annotationData.itemKey);
+
+      // Prepare Eagle item data
+      const eagleItem: EagleItemFromPath = {
+        path: filePath,
+        name: `${annotationData.title || "Unknown"} - Page ${annotationData.pageNumber}`,
+        website: zoteroUrl,
+        annotation: this.generateEagleAnnotation(annotationData),
+        tags: this.generateEagleTags(annotationData),
+        folderId: getPref("eagleFolderId") || undefined,
+      };
+
+      // Save to Eagle
+      const response: EagleApiResponse =
+        await EagleApi.addItemFromPath(eagleItem);
+
+      if (response.status === "success") {
+        await this.log("Successfully saved image to Eagle");
+        await FileLogger.log(
+          "INFO",
+          "ImageSaver",
+          `Eagle integration: Image saved for annotation ${annotationData.annotationId}`,
+        );
+      } else {
+        await this.log(
+          `Failed to save image to Eagle: ${response.message}`,
+          "WARN",
+        );
+      }
+    } catch (error) {
+      await this.log(`Error saving to Eagle: ${error}`, "ERROR");
+    }
+  }
+
+  private static generateEagleAnnotation(
+    annotationData: ImageAnnotationData,
+  ): string {
+    const parts = [];
+
+    if (annotationData.title) {
+      parts.push(`Title: ${annotationData.title}`);
+    }
+
+    if (annotationData.authors && annotationData.authors.length > 0) {
+      parts.push(`Authors: ${annotationData.authors.join(", ")}`);
+    }
+
+    if (annotationData.year) {
+      parts.push(`Year: ${annotationData.year}`);
+    }
+
+    parts.push(`Page: ${annotationData.pageNumber}`);
+    parts.push(`Annotation ID: ${annotationData.annotationId}`);
+
+    return parts.join(" | ");
+  }
+
+  private static generateEagleTags(
+    annotationData: ImageAnnotationData,
+  ): string[] {
+    const tags = ["Zotero", "PDF", "Annotation"];
+
+    if (annotationData.year) {
+      tags.push(annotationData.year);
+    }
+
+    if (annotationData.authors && annotationData.authors.length > 0) {
+      // Add first author's last name as a tag
+      const firstAuthor = annotationData.authors[0];
+      const lastNameMatch = firstAuthor.match(/\b(\w+)$/);
+      if (lastNameMatch) {
+        tags.push(lastNameMatch[1]);
+      }
+    }
+
+    return tags;
   }
 }

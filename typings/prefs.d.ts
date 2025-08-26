@@ -10,6 +10,8 @@ declare namespace _ZoteroTypes {
       "eagleApiUrl": string;
       "eagleApiToken": string;
       "outputDirectory": string;
+      "enableEagleIntegration": boolean;
+      "eagleFolderId": string;
     };
   }
 }

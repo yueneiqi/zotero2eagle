@@ -54,6 +54,40 @@
     <html:div data-l10n-id="pref-output-dir-help"></html:div>
   </vbox>
 
+  <!-- Eagle Integration Settings -->
+  <vbox>
+    <html:label data-l10n-id="pref-eagle-section"></html:label>
+
+    <!-- Enable Eagle Integration -->
+    <hbox>
+      <html:input
+        type="checkbox"
+        id="zotero-prefpane-__addonRef__-enable-eagle"
+        preference="enableEagleIntegration"
+      ></html:input>
+      <html:label
+        for="zotero-prefpane-__addonRef__-enable-eagle"
+        data-l10n-id="pref-enable-eagle"
+      ></html:label>
+    </hbox>
+    <html:div data-l10n-id="pref-enable-eagle-help"></html:div>
+
+    <!-- Eagle Folder ID -->
+    <vbox>
+      <html:label
+        for="zotero-prefpane-__addonRef__-eagle-folder"
+        data-l10n-id="pref-eagle-folder"
+      ></html:label>
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-eagle-folder"
+        preference="eagleFolderId"
+        placeholder="Optional: Eagle folder ID"
+      ></html:input>
+      <html:div data-l10n-id="pref-eagle-folder-help"></html:div>
+    </vbox>
+  </vbox>
+
   <!-- Test Connection Button -->
   <hbox>
     <button

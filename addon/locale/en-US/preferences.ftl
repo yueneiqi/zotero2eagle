@@ -9,6 +9,14 @@ pref-api-token-help = Your Eagle API token for authentication. Go to Eagle → P
 pref-output-dir = Output Directory:
 pref-output-dir-help = Optional: Local directory to also save captured images as backup files (in addition to Eagle). Leave empty to save only to Eagle.
 
+pref-eagle-section = Eagle Integration Settings
+
+pref-enable-eagle = Enable Eagle Integration
+pref-enable-eagle-help = When enabled, images will be automatically saved to Eagle when annotations are created. Make sure Eagle is running.
+
+pref-eagle-folder = Eagle Folder ID:
+pref-eagle-folder-help = Optional: Specific folder ID in Eagle to save images to. Leave empty to save to the default location.
+
 pref-test-connection = Test Connection
 
 pref-help = { $name } Build { $version } { $time }
