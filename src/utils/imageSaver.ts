@@ -279,12 +279,18 @@ export class ImageSaver {
 
       await this.log(`Copying from ${cachePath} to ${destPath}`);
 
-      // Copy file using OS.File.copy
+      // Copy file using Zotero's file system API
       try {
-        await OS.File.copy(cachePath, destPath);
+        const sourceFile = Zotero.File.pathToFile(cachePath);
+        const destFile = Zotero.File.pathToFile(destPath);
+
+        // Read the source file and copy to destination
+        const sourceData = await Zotero.File.getBinaryContentsAsync(cachePath);
+        await Zotero.File.putContentsAsync(destPath, sourceData);
+
         await this.log("Successfully copied cache file to output directory");
       } catch (copyError) {
-        await this.log(`OS.File.copy failed: ${copyError}`, "ERROR");
+        await this.log(`File copy failed: ${copyError}`, "ERROR");
         throw copyError;
       }
 
@@ -375,13 +381,16 @@ export class ImageSaver {
 
         await this.log(`Created Uint8Array with ${u8arr.length} bytes`);
 
-        // Write directly using OS.File.writeAtomic (same as Zotero's image saving)
-        await OS.File.writeAtomic(filePath, u8arr);
+        // Write directly using Zotero's file API
+        await Zotero.File.putContentsAsync(filePath, u8arr.buffer);
         await this.log(
-          "Successfully wrote image file using OS.File.writeAtomic",
+          "Successfully wrote image file using Zotero.File.putContentsAsync",
         );
       } catch (writeError) {
-        await this.log(`OS.File.writeAtomic failed: ${writeError}`, "ERROR");
+        await this.log(
+          `Zotero.File.putContentsAsync failed: ${writeError}`,
+          "ERROR",
+        );
         throw writeError;
       }
 

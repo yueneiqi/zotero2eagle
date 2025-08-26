@@ -16,11 +16,3 @@ declare const rootURI: string;
 declare const addon: import("../src/addon").default;
 
 declare const __env__: "production" | "development";
-
-declare const OS: {
-  File: {
-    writeAtomic(path: string, data: Uint8Array, options?: any): Promise<void>;
-    [key: string]: any;
-  };
-  [key: string]: any;
-};
