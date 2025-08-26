@@ -279,16 +279,26 @@ export class ImageSaver {
 
       await this.log(`Copying from ${cachePath} to ${destPath}`);
 
-      // Copy file using Zotero's file system API
+      // Copy file using native nsIFile copy method
       try {
         const sourceFile = Zotero.File.pathToFile(cachePath);
         const destFile = Zotero.File.pathToFile(destPath);
 
-        // Read the source file and copy to destination
-        const sourceData = await Zotero.File.getBinaryContentsAsync(cachePath);
-        await Zotero.File.putContentsAsync(destPath, sourceData);
+        // Ensure destination directory exists
+        const destParent = destFile.parent;
+        if (!destParent.exists()) {
+          destParent.create(
+            (Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1,
+            0o755,
+          );
+        }
 
-        await this.log("Successfully copied cache file to output directory");
+        // Use native nsIFile.copyTo for binary-safe file copying
+        sourceFile.copyTo(destParent, destFile.leafName);
+
+        await this.log(
+          "Successfully copied cache file to output directory using nsIFile.copyTo",
+        );
       } catch (copyError) {
         await this.log(`File copy failed: ${copyError}`, "ERROR");
         throw copyError;
