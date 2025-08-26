@@ -1,2 +1,3 @@
-pref("enable", true);
-pref("input", "This is input");
+pref("eagleApiUrl", "http://localhost:41595");
+pref("eagleApiToken", "");
+pref("outputDirectory", "");

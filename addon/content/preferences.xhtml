@@ -1,33 +1,110 @@
 <linkset>
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
+
 <groupbox
   onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window });"
 >
-  <label><html:h2 data-l10n-id="pref-title"></html:h2></label>
-  <checkbox
-    id="zotero-prefpane-__addonRef__-enable"
-    preference="enable"
-    data-l10n-id="pref-enable"
-  />
-  <hbox>
+  <label>
+    <html:h2 data-l10n-id="pref-title"></html:h2>
+  </label>
+
+  <!-- Eagle API URL -->
+  <vbox>
     <html:label
-      for="zotero-prefpane-__addonRef__-input"
-      data-l10n-id="pref-input"
+      for="zotero-prefpane-__addonRef__-api-url"
+      data-l10n-id="pref-api-url"
     ></html:label>
     <html:input
       type="text"
-      id="zotero-prefpane-__addonRef__-input"
-      preference="input"
+      id="zotero-prefpane-__addonRef__-api-url"
+      preference="eagleApiUrl"
+      placeholder="http://localhost:41595"
     ></html:input>
-  </hbox>
-  <hbox class="virtualized-table-container" flex="1" height="300px">
-    <html:div id="__addonRef__-table-container" />
+    <html:div data-l10n-id="pref-api-url-help"></html:div>
+  </vbox>
+
+  <!-- Eagle API Token -->
+  <vbox>
+    <html:label
+      for="zotero-prefpane-__addonRef__-api-token"
+      data-l10n-id="pref-api-token"
+    ></html:label>
+    <html:input
+      type="password"
+      id="zotero-prefpane-__addonRef__-api-token"
+      preference="eagleApiToken"
+      placeholder="Enter your Eagle API token"
+    ></html:input>
+    <html:div data-l10n-id="pref-api-token-help"></html:div>
+  </vbox>
+
+  <!-- Output Directory -->
+  <vbox>
+    <html:label
+      for="zotero-prefpane-__addonRef__-output-dir"
+      data-l10n-id="pref-output-dir"
+    ></html:label>
+    <html:input
+      type="text"
+      id="zotero-prefpane-__addonRef__-output-dir"
+      preference="outputDirectory"
+      placeholder="Optional: Local backup directory"
+    ></html:input>
+    <html:div data-l10n-id="pref-output-dir-help"></html:div>
+  </vbox>
+
+  <!-- Test Connection Button -->
+  <hbox>
+    <button
+      id="__addonRef__-test-connection"
+      data-l10n-id="pref-test-connection"
+    ></button>
+    <html:span id="__addonRef__-connection-status"></html:span>
   </hbox>
 </groupbox>
+
 <vbox>
   <html:label
     data-l10n-id="pref-help"
     data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
   ></html:label>
 </vbox>
+
+<html:style
+  ><![CDATA[ /* Scoped to zotero2eagle preferences only */ /* Title styling -
+  specific to our plugin */ html|h2[data-l10n-id*="pref-title"] { margin: 0 0
+  20px 0; font-size: 18px; font-weight: 600; color: #333; border-bottom: 2px
+  solid #0060df; padding-bottom: 8px; } /* Form sections - only in our groupbox
+  */ groupbox[onload*="__addonInstance__"] vbox { margin-bottom: 16px; } /*
+  Label styling - specific to our form fields */ html|label[for*="__addonRef__"]
+  { display: block; font-weight: 500; color: #333; margin-bottom: 6px;
+  font-size: 14px; } /* Input field styling - specific to our fields */
+  html|input[id*="__addonRef__"] { width: 100%; padding: 8px 12px; border: 1px
+  solid #ccc; border-radius: 4px; font-size: 14px; transition: border-color 0.2s
+  ease; box-sizing: border-box; max-width: 400px; }
+  html|input[id*="__addonRef__"]:focus { outline: none; border-color: #0060df;
+  box-shadow: 0 0 0 2px rgba(0, 96, 223, 0.1); } /* Help text styling - specific
+  to our help divs */ html|div[data-l10n-id*="pref-"][data-l10n-id*="-help"] {
+  font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; font-style:
+  italic; max-width: 400px; } /* Button container - only in our groupbox */
+  groupbox[onload*="__addonInstance__"] hbox { align-items: center; margin-top:
+  20px; padding-top: 16px; border-top: 1px solid #eee; } /* TODO: the text of
+  button is a little bit low. fix it later */ /* Button styling - specific to
+  our test connection button */ button[id*="__addonRef__"] { padding: 9px 16px
+  7px 16px; background: #0060df; color: black !important; border: none;
+  border-radius: 4px; font-size: 13px; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: background-color 0.2s ease; min-height: auto;
+  line-height: 1; text-align: center; vertical-align: middle; white-space:
+  nowrap; } button[id*="__addonRef__"]:hover { background: #003eaa; }
+  button[id*="__addonRef__"]:active { background: #002275; }
+  button[id*="__addonRef__"]:disabled { background: #ccc; cursor: not-allowed; }
+  /* Status text styling - specific to our connection status */
+  html|span[id*="__addonRef__"][id*="connection-status"] { margin-left: 12px;
+  font-size: 14px; font-weight: 500; } /* Footer help text - specific to our
+  help label */ html|label[data-l10n-id*="pref-help"] { font-size: 12px; color:
+  #888; text-align: center; font-style: italic; display: block; margin-top:
+  24px; padding-top: 16px; border-top: 1px solid #eee; } /* Responsive
+  adjustments - only for our fields */ @media (max-width: 600px) {
+  html|input[id*="__addonRef__"] { max-width: 100%; } } ]]></html:style
+>
