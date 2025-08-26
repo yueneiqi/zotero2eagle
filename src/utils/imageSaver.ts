@@ -13,6 +13,14 @@ export interface ImageAnnotationData {
   year?: string;
 }
 
+export interface ImageSaveResult {
+  success: boolean;
+  eagleSaved: boolean;
+  localSaved: boolean;
+  message: string;
+  filename?: string;
+}
+
 export class ImageSaver {
   static async log(
     msg: string,
@@ -24,7 +32,7 @@ export class ImageSaver {
   static async saveAnnotationImage(
     item: any,
     annotationData: ImageAnnotationData,
-  ): Promise<boolean> {
+  ): Promise<ImageSaveResult> {
     await FileLogger.initializeLogger();
 
     try {
@@ -37,31 +45,53 @@ export class ImageSaver {
 
       if (!item || !item.isAnnotation()) {
         await this.log("Invalid item provided - not an annotation", "ERROR");
-        return false;
+        return {
+          success: false,
+          eagleSaved: false,
+          localSaved: false,
+          message: "Invalid annotation item",
+        };
       }
+
+      let eagleSaved = false;
+      let localSaved = false;
 
       // Try to save to Eagle first if integration is enabled (uses cache directly)
       const eagleIntegrationEnabled = getPref("enableEagleIntegration");
       if (eagleIntegrationEnabled) {
-        await this.saveToEagleDirect(item, annotationData);
+        eagleSaved = await this.saveToEagleDirect(item, annotationData);
       }
 
       // Only proceed with local backup if output directory is configured
       if (!expandedOutputDir || expandedOutputDir.trim() === "") {
         await this.log("No output directory configured, skipping local backup");
-        // If Eagle integration is enabled, consider the operation successful
-        // If neither Eagle nor local backup is configured, that's a configuration issue
-        if (eagleIntegrationEnabled) {
-          await this.log(
-            "Eagle integration is enabled, operation considered successful",
-          );
-          return true;
+
+        // Return result based on Eagle status
+        if (eagleIntegrationEnabled && eagleSaved) {
+          return {
+            success: true,
+            eagleSaved: true,
+            localSaved: false,
+            message: "Image saved to Eagle",
+          };
+        } else if (eagleIntegrationEnabled && !eagleSaved) {
+          return {
+            success: false,
+            eagleSaved: false,
+            localSaved: false,
+            message: "Failed to save to Eagle",
+          };
         } else {
           await this.log(
             "Neither Eagle integration nor local backup is configured",
             "WARN",
           );
-          return false;
+          return {
+            success: false,
+            eagleSaved: false,
+            localSaved: false,
+            message: "No save method configured",
+          };
         }
       }
 
@@ -74,7 +104,24 @@ export class ImageSaver {
           undefined,
           "No image data found",
         );
-        return false;
+
+        // Return result based on what succeeded
+        if (eagleSaved) {
+          return {
+            success: true,
+            eagleSaved: true,
+            localSaved: false,
+            message:
+              "Image saved to Eagle (local backup failed: no image data)",
+          };
+        } else {
+          return {
+            success: false,
+            eagleSaved: false,
+            localSaved: false,
+            message: "No image data found in annotation",
+          };
+        }
       }
 
       await this.log(
@@ -89,23 +136,45 @@ export class ImageSaver {
 
       if (filePath) {
         const filename = filePath.split(/[/\\]/).pop() || "unknown";
-        await this.log(`Image saved successfully to: ${filePath}`);
+        await this.log(
+          `Image saved successfully to local directory: ${filePath}`,
+        );
         await FileLogger.logImageSaveEvent(
           true,
           annotationData.annotationId,
           filename,
         );
-
-        return true;
+        localSaved = true;
+      } else {
+        await FileLogger.logImageSaveEvent(
+          false,
+          annotationData.annotationId,
+          undefined,
+          "Failed to save to directory",
+        );
       }
 
-      await FileLogger.logImageSaveEvent(
-        false,
-        annotationData.annotationId,
-        undefined,
-        "Failed to save to directory",
-      );
-      return false;
+      // Generate final result message based on what succeeded
+      const success = eagleSaved || localSaved;
+      let message = "";
+
+      if (eagleSaved && localSaved) {
+        message = "Image saved to Eagle and local directory";
+      } else if (eagleSaved && !localSaved) {
+        message = "Image saved to Eagle (local backup failed)";
+      } else if (!eagleSaved && localSaved) {
+        message = "Image saved to local directory (Eagle failed or disabled)";
+      } else {
+        message = "Failed to save image (both Eagle and local backup failed)";
+      }
+
+      return {
+        success,
+        eagleSaved,
+        localSaved,
+        message,
+        filename: localSaved ? filePath?.split(/[/\\]/).pop() : undefined,
+      };
     } catch (error) {
       const errorMsg = `Error saving annotation image: ${error}`;
       await this.log(errorMsg, "ERROR");
@@ -115,7 +184,12 @@ export class ImageSaver {
         undefined,
         String(error),
       );
-      return false;
+      return {
+        success: false,
+        eagleSaved: false,
+        localSaved: false,
+        message: `Error: ${error}`,
+      };
     }
   }
 
@@ -447,7 +521,7 @@ export class ImageSaver {
   private static async saveToEagleDirect(
     item: any,
     annotationData: ImageAnnotationData,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await this.log(
         "Attempting to save image to Eagle using cache path directly",
@@ -462,7 +536,7 @@ export class ImageSaver {
           "Cache image not available, cannot save to Eagle",
           "WARN",
         );
-        return;
+        return false;
       }
 
       // Generate Zotero link for the item with page and annotation info
@@ -500,14 +574,17 @@ export class ImageSaver {
           "ImageSaver",
           `Eagle integration: Image saved directly from cache for annotation ${annotationData.annotationId}`,
         );
+        return true;
       } else {
         await this.log(
           `Failed to save image to Eagle: ${response.message}`,
           "WARN",
         );
+        return false;
       }
     } catch (error) {
       await this.log(`Error saving to Eagle directly: ${error}`, "ERROR");
+      return false;
     }
   }
 

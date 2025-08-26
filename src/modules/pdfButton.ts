@@ -1,5 +1,9 @@
 import { config } from "../../package.json";
-import { ImageSaver, ImageAnnotationData } from "../utils/imageSaver";
+import {
+  ImageSaver,
+  ImageAnnotationData,
+  ImageSaveResult,
+} from "../utils/imageSaver";
 import { FileLogger } from "../utils/fileLogger";
 
 class PDFButton {
@@ -292,8 +296,9 @@ class PDFButton {
       `Showing annotation details - ID: ${annotationId}, Type: ${annotationType}, Item ID: ${itemId}, Item Key: ${itemKey}, Page: ${pageNumber}`,
     );
 
-    // If this is an image annotation, try to save the image to output directory
+    // If this is an image annotation, try to save the image
     let imageSaveStatus = "";
+    let imageSaveSuccess = false;
     if (annotationType === "image") {
       try {
         const metadata = await ImageSaver.getParentItemMetadata(item);
@@ -306,22 +311,23 @@ class PDFButton {
           ...metadata,
         };
 
-        const saveSuccess = await ImageSaver.saveAnnotationImage(
-          item,
-          annotationData,
-        );
-        if (saveSuccess) {
-          imageSaveStatus = "Image saved to output directory";
-          await this.log("Image annotation saved to output directory");
+        const saveResult: ImageSaveResult =
+          await ImageSaver.saveAnnotationImage(item, annotationData);
+
+        imageSaveStatus = saveResult.message;
+        imageSaveSuccess = saveResult.success;
+
+        if (saveResult.success) {
+          await this.log(`Image annotation saved: ${saveResult.message}`);
         } else {
-          imageSaveStatus = "Image save failed or disabled";
           await this.log(
-            "Failed to save image annotation or feature disabled",
+            `Failed to save image annotation: ${saveResult.message}`,
             "WARN",
           );
         }
       } catch (error) {
         imageSaveStatus = "Image save error occurred";
+        imageSaveSuccess = false;
         await this.log(`Error saving image annotation: ${error}`, "ERROR");
       }
     }
@@ -356,12 +362,7 @@ class PDFButton {
 
     // Add image save status line if applicable
     if (imageSaveStatus) {
-      const statusType = imageSaveStatus.includes("saved")
-        ? "success"
-        : imageSaveStatus.includes("failed") ||
-            imageSaveStatus.includes("error")
-          ? "fail"
-          : "default";
+      const statusType = imageSaveSuccess ? "success" : "fail";
       progressWindow.createLine({
         text: imageSaveStatus,
         type: statusType,
