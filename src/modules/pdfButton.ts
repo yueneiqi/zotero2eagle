@@ -99,39 +99,32 @@ class PDFButton {
                 const annotationId = item.key;
                 this.log(`New annotation detected with ID: ${annotationId}`);
 
-                // Get current item ID and page number
-                const currentItem =
-                  Zotero.getActiveZoteroPane()?.getSelectedItems()?.[0];
-                const currentItemId = currentItem?.id || "Unknown";
+                // Get the parent item ID (the PDF item)
+                const parentItem = item.parentItem;
+                const parentItemId = parentItem ? parentItem.id : "Unknown";
 
-                // Try to get page number from the reader
+                // Get page number directly from the annotation
                 let pageNumber = "Unknown";
                 try {
-                  // Get the currently selected tab ID
-                  const selectedTabId = (Zotero.getMainWindow() as any)
-                    .Zotero_Tabs?.selectedID;
-                  if (selectedTabId) {
-                    const reader = Zotero.Reader.getByTabID(selectedTabId);
-                    if (reader) {
-                      // Access the page index through the internal state
-                      const state = (reader as any)._state;
-                      if (
-                        state &&
-                        state.primaryView &&
-                        typeof state.primaryView.pageIndex === "number"
-                      ) {
-                        const pageIndex = state.primaryView.pageIndex;
-                        pageNumber = (pageIndex + 1).toString(); // Convert to 1-based index
-                      }
+                  // Annotations store page information in their position property
+                  const position = item.annotationPosition;
+                  if (position) {
+                    // Parse the position JSON to extract page index
+                    const positionObj = JSON.parse(position);
+                    if (
+                      positionObj &&
+                      typeof positionObj.pageIndex === "number"
+                    ) {
+                      pageNumber = (positionObj.pageIndex + 1).toString(); // Convert to 1-based index
                     }
                   }
                 } catch (e) {
-                  this.log(`Error getting page number: ${e}`);
+                  this.log(`Error getting page number from annotation: ${e}`);
                 }
 
                 this.showAnnotationDetails(
                   annotationId,
-                  currentItemId.toString(),
+                  parentItemId.toString(),
                   pageNumber,
                 );
                 // Unregister the observer after finding the annotation
