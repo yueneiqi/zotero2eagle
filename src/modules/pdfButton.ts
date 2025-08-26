@@ -100,7 +100,9 @@ class PDFButton {
               if (item && item.isAnnotation()) {
                 const annotationId = item.key;
                 const annotationType = item.annotationType;
-                await this.log(`New annotation detected with ID: ${annotationId}, Type: ${annotationType}`);
+                await this.log(
+                  `New annotation detected with ID: ${annotationId}, Type: ${annotationType}`,
+                );
 
                 // Get the parent item ID (the PDF item)
                 const parentItem = item.parentItem;
@@ -194,13 +196,19 @@ class PDFButton {
           ...metadata,
         };
 
-        const saveSuccess = await ImageSaver.saveAnnotationImage(item, annotationData);
+        const saveSuccess = await ImageSaver.saveAnnotationImage(
+          item,
+          annotationData,
+        );
         if (saveSuccess) {
           imageSaveStatus = "Image saved to output directory";
           await this.log("Image annotation saved to output directory");
         } else {
           imageSaveStatus = "Image save failed or disabled";
-          await this.log("Failed to save image annotation or feature disabled", "WARN");
+          await this.log(
+            "Failed to save image annotation or feature disabled",
+            "WARN",
+          );
         }
       } catch (error) {
         imageSaveStatus = "Image save error occurred";
@@ -238,8 +246,12 @@ class PDFButton {
 
     // Add image save status line if applicable
     if (imageSaveStatus) {
-      const statusType = imageSaveStatus.includes("saved") ? "success" : 
-                        imageSaveStatus.includes("failed") || imageSaveStatus.includes("error") ? "fail" : "default";
+      const statusType = imageSaveStatus.includes("saved")
+        ? "success"
+        : imageSaveStatus.includes("failed") ||
+            imageSaveStatus.includes("error")
+          ? "fail"
+          : "default";
       progressWindow.createLine({
         text: imageSaveStatus,
         type: statusType,
@@ -248,7 +260,7 @@ class PDFButton {
     } else {
       progressWindow.createLine({
         text: "Processing completed",
-        type: "success", 
+        type: "success",
         progress: 100,
       });
     }
@@ -258,7 +270,6 @@ class PDFButton {
     // Close the window automatically after a few seconds
     progressWindow.startCloseTimer(5000);
   }
-
 
   addAllButtons() {
     this.log("proxy button for all open tabs");

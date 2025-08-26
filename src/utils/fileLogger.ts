@@ -8,12 +8,14 @@ export class FileLogger {
       let outputDir = getPref("outputDirectory") as string;
       if (outputDir && outputDir.trim() !== "") {
         // Expand tilde (~) to home directory if present
-        if (outputDir.startsWith('~')) {
+        if (outputDir.startsWith("~")) {
           try {
-            const homePath = (Components as any).classes["@mozilla.org/file/directory_service;1"]
+            const homePath = (Components as any).classes[
+              "@mozilla.org/file/directory_service;1"
+            ]
               .getService((Components as any).interfaces.nsIProperties)
               .get("Home", (Components as any).interfaces.nsIFile).path;
-            outputDir = outputDir.replace('~', homePath);
+            outputDir = outputDir.replace("~", homePath);
           } catch (e) {
             console.warn("Failed to expand home directory in logger:", e);
           }
@@ -22,17 +24,23 @@ export class FileLogger {
         // Create logs subdirectory in output directory
         const outputDirNS = Zotero.File.pathToFile(outputDir);
         if (!outputDirNS.exists()) {
-          outputDirNS.create((Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1, 0o755);
+          outputDirNS.create(
+            (Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1,
+            0o755,
+          );
         }
 
         const logsDir = outputDirNS.clone();
         logsDir.append("logs");
         if (!logsDir.exists()) {
-          logsDir.create((Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1, 0o755);
+          logsDir.create(
+            (Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1,
+            0o755,
+          );
         }
 
         // Set log file path with date
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split("T")[0];
         const separator = Zotero.isWin ? "\\" : "/";
         this.logFilePath = `${logsDir.path}${separator}zotero2eagle_${today}.log`;
       }
@@ -42,7 +50,11 @@ export class FileLogger {
     }
   }
 
-  static async log(level: "INFO" | "WARN" | "ERROR" | "DEBUG", module: string, message: string): Promise<void> {
+  static async log(
+    level: "INFO" | "WARN" | "ERROR" | "DEBUG",
+    module: string,
+    message: string,
+  ): Promise<void> {
     try {
       // Always log to Zotero debug console
       Zotero.debug(`zotero2eagle-${module}: [${level}] ${message}`);
@@ -56,14 +68,21 @@ export class FileLogger {
           // Append to existing file by reading current content first
           let existingContent = "";
           try {
-            const fileExists = await Zotero.File.pathToFile(this.logFilePath).exists();
+            const fileExists = await Zotero.File.pathToFile(
+              this.logFilePath,
+            ).exists();
             if (fileExists) {
-              existingContent = await Zotero.File.getContentsAsync(this.logFilePath) as string;
+              existingContent = (await Zotero.File.getContentsAsync(
+                this.logFilePath,
+              )) as string;
             }
           } catch (e) {
             // File doesn't exist or can't be read, start with empty content
           }
-          await Zotero.File.putContentsAsync(this.logFilePath, existingContent + logEntry);
+          await Zotero.File.putContentsAsync(
+            this.logFilePath,
+            existingContent + logEntry,
+          );
         } catch (fileError) {
           // If file logging fails, at least log to console
           console.warn("Failed to write to log file:", fileError);
@@ -92,17 +111,21 @@ export class FileLogger {
   }
 
   static async logImageSaveEvent(
-    success: boolean, 
-    annotationId: string, 
-    filename?: string, 
-    error?: string
+    success: boolean,
+    annotationId: string,
+    filename?: string,
+    error?: string,
   ): Promise<void> {
     const status = success ? "SUCCESS" : "FAILED";
-    const details = success 
+    const details = success
       ? `Saved annotation ${annotationId} as ${filename}`
       : `Failed to save annotation ${annotationId}: ${error}`;
-    
-    await this.log(success ? "INFO" : "ERROR", "ImageSaver", `[${status}] ${details}`);
+
+    await this.log(
+      success ? "INFO" : "ERROR",
+      "ImageSaver",
+      `[${status}] ${details}`,
+    );
   }
 
   static getLogFilePath(): string | null {
@@ -115,18 +138,23 @@ export class FileLogger {
     try {
       const logFile = Zotero.File.pathToFile(this.logFilePath);
       if (logFile.exists()) {
-        const contents = await Zotero.File.getContentsAsync(this.logFilePath) as string;
+        const contents = (await Zotero.File.getContentsAsync(
+          this.logFilePath,
+        )) as string;
         // Rotate if log file is larger than 10MB
         if (contents && contents.length > 10 * 1024 * 1024) {
           const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-          const rotatedPath = this.logFilePath.replace(".log", `_${timestamp}.log`);
-          
+          const rotatedPath = this.logFilePath.replace(
+            ".log",
+            `_${timestamp}.log`,
+          );
+
           // Copy current log to rotated file
           await Zotero.File.putContentsAsync(rotatedPath, contents);
-          
+
           // Clear current log file
           await Zotero.File.putContentsAsync(this.logFilePath, "");
-          
+
           await this.info("FileLogger", `Log file rotated to ${rotatedPath}`);
         }
       }

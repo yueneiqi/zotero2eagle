@@ -13,7 +13,10 @@ export interface ImageAnnotationData {
 }
 
 export class ImageSaver {
-  static async log(msg: string, level: "INFO" | "WARN" | "ERROR" | "DEBUG" = "INFO") {
+  static async log(
+    msg: string,
+    level: "INFO" | "WARN" | "ERROR" | "DEBUG" = "INFO",
+  ) {
     await FileLogger.log(level, "ImageSaver", msg);
   }
 
@@ -22,42 +25,53 @@ export class ImageSaver {
     annotationData: ImageAnnotationData,
   ): Promise<boolean> {
     await FileLogger.initializeLogger();
-    
+
     try {
-      await this.log(`Starting image save for annotation ${annotationData.annotationId}`);
-      
+      await this.log(
+        `Starting image save for annotation ${annotationData.annotationId}`,
+      );
+
       const outputDir = getPref("outputDirectory") as string;
       if (!outputDir || outputDir.trim() === "") {
-        await this.log("No output directory configured, skipping image save", "WARN");
+        await this.log(
+          "No output directory configured, skipping image save",
+          "WARN",
+        );
         return false;
       }
 
       // Expand tilde (~) to home directory if present
       let expandedOutputDir = outputDir;
-      if (outputDir.startsWith('~')) {
+      if (outputDir.startsWith("~")) {
         try {
           // Use OS-specific approach to get home directory
-          const os = Zotero.isWin ? 'win' : (Zotero.isMac ? 'mac' : 'linux');
-          let homePath = '';
-          
-          if (os === 'win') {
-            homePath = (Components as any).classes["@mozilla.org/file/directory_service;1"]
+          const os = Zotero.isWin ? "win" : Zotero.isMac ? "mac" : "linux";
+          let homePath = "";
+
+          if (os === "win") {
+            homePath = (Components as any).classes[
+              "@mozilla.org/file/directory_service;1"
+            ]
               .getService((Components as any).interfaces.nsIProperties)
               .get("Home", (Components as any).interfaces.nsIFile).path;
           } else {
             // Unix-like systems (Mac, Linux)
-            homePath = (Components as any).classes["@mozilla.org/file/directory_service;1"]
-              .getService((Components as any).interfaces.nsIProperties)  
+            homePath = (Components as any).classes[
+              "@mozilla.org/file/directory_service;1"
+            ]
+              .getService((Components as any).interfaces.nsIProperties)
               .get("Home", (Components as any).interfaces.nsIFile).path;
           }
-          
-          expandedOutputDir = outputDir.replace('~', homePath);
+
+          expandedOutputDir = outputDir.replace("~", homePath);
         } catch (e) {
           await this.log(`Failed to expand home directory: ${e}`, "WARN");
         }
       }
 
-      await this.log(`Output directory configured: ${outputDir} (expanded: ${expandedOutputDir})`);
+      await this.log(
+        `Output directory configured: ${outputDir} (expanded: ${expandedOutputDir})`,
+      );
 
       if (!item || !item.isAnnotation()) {
         await this.log("Invalid item provided - not an annotation", "ERROR");
@@ -66,144 +80,218 @@ export class ImageSaver {
 
       const imageData = await this.extractImageFromAnnotation(item);
       if (!imageData) {
-        // Try again after a short delay - cache might not be ready yet
-        await this.log("Image not found immediately, waiting 2 seconds and retrying...");
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const retryImageData = await this.extractImageFromAnnotation(item);
-        if (!retryImageData) {
-          await this.log("No image data found in annotation after retry", "WARN");
-          await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, "No image data found");
-          return false;
-        }
-        await this.log("Image data found on retry");
-        return this.saveImageToDirectory(retryImageData, expandedOutputDir, annotationData).then(filePath => {
-          if (filePath) {
-            const filename = filePath.split(/[/\\]/).pop() || "unknown";
-            FileLogger.logImageSaveEvent(true, annotationData.annotationId, filename);
-            return true;
-          }
-          return false;
-        });
+        await this.log("No image data found in annotation", "WARN");
+        await FileLogger.logImageSaveEvent(
+          false,
+          annotationData.annotationId,
+          undefined,
+          "No image data found",
+        );
+        return false;
       }
 
-      await this.log(`Extracted image data, size: ${imageData.length} characters`);
+      await this.log(
+        `Extracted image data, size: ${imageData.length} characters`,
+      );
 
       const filePath = await this.saveImageToDirectory(
         imageData,
         expandedOutputDir,
         annotationData,
       );
-      
+
       if (filePath) {
         const filename = filePath.split(/[/\\]/).pop() || "unknown";
         await this.log(`Image saved successfully to: ${filePath}`);
-        await FileLogger.logImageSaveEvent(true, annotationData.annotationId, filename);
+        await FileLogger.logImageSaveEvent(
+          true,
+          annotationData.annotationId,
+          filename,
+        );
         return true;
       }
-      
-      await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, "Failed to save to directory");
+
+      await FileLogger.logImageSaveEvent(
+        false,
+        annotationData.annotationId,
+        undefined,
+        "Failed to save to directory",
+      );
       return false;
     } catch (error) {
       const errorMsg = `Error saving annotation image: ${error}`;
       await this.log(errorMsg, "ERROR");
-      await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, String(error));
+      await FileLogger.logImageSaveEvent(
+        false,
+        annotationData.annotationId,
+        undefined,
+        String(error),
+      );
       return false;
     }
   }
 
-  private static async extractImageFromAnnotation(item: any): Promise<string | null> {
+  private static async waitForCacheImage(
+    annotationId: string,
+  ): Promise<string | null> {
+    try {
+      // Build the expected cache path: ~/Zotero/cache/library/<annotation_id>.png
+      const homeDir = this.getHomeDirectory();
+      if (!homeDir) {
+        await this.log("Could not determine home directory", "ERROR");
+        return null;
+      }
+
+      const cachePath = `${homeDir}/Zotero/cache/library/${annotationId}.png`;
+      await this.log(`Looking for cache file at: ${cachePath}`);
+
+      // Wait up to 10 seconds for the cache file to appear
+      const maxWaitTime = 10000; // 10 seconds
+      const checkInterval = 200; // Check every 200ms
+      const maxAttempts = maxWaitTime / checkInterval;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const cacheFile = Zotero.File.pathToFile(cachePath);
+          if (cacheFile.exists() && cacheFile.isFile()) {
+            await this.log(
+              `Cache file found after ${attempt * checkInterval}ms`,
+            );
+            return cachePath;
+          }
+        } catch (e) {
+          // File doesn't exist yet, continue waiting
+        }
+
+        // Wait before next check
+        await new Promise((resolve) => setTimeout(resolve, checkInterval));
+      }
+
+      await this.log(`Cache file not found after ${maxWaitTime}ms`, "WARN");
+      return null;
+    } catch (error) {
+      await this.log(`Error waiting for cache image: ${error}`, "ERROR");
+      return null;
+    }
+  }
+
+  private static getHomeDirectory(): string | null {
+    try {
+      // Get home directory using Zotero's cross-platform approach
+      const homeDirFile = (Components as any).classes[
+        "@mozilla.org/file/directory_service;1"
+      ]
+        .getService((Components as any).interfaces.nsIProperties)
+        .get("Home", (Components as any).interfaces.nsIFile);
+
+      return homeDirFile.path;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private static async extractImageFromAnnotation(
+    item: any,
+  ): Promise<string | null> {
     try {
       if (item.annotationType !== "image") {
         return null;
       }
 
-      await this.log("Attempting to extract image from annotation using Zotero's cache system");
+      const annotationId = item.key;
+      await this.log(`Waiting for cache image for annotation ${annotationId}`);
 
-      // Use Zotero's annotation system to get the image data
-      // This is the correct way according to Zotero's source code
+      // Wait for the cache PNG file to be created
+      const cachePath = await this.waitForCacheImage(annotationId);
+      if (!cachePath) {
+        await this.log("Cache image file not found", "WARN");
+        return null;
+      }
+
+      // Read the cache file and convert to data URI
       try {
-        // Method 1: Use Zotero.Annotations.toJSON() - the official way
-        if (Zotero.Annotations && typeof Zotero.Annotations.toJSON === 'function') {
-          await this.log("Trying Zotero.Annotations.toJSON() method");
-          const jsonData = await Zotero.Annotations.toJSON(item);
-          if (jsonData && jsonData.image) {
-            await this.log(`Got image data via Zotero.Annotations.toJSON, length: ${jsonData.image.length}`);
-            return jsonData.image;
-          } else {
-            await this.log("Zotero.Annotations.toJSON() returned no image data", "WARN");
-          }
+        const dataUri = await Zotero.File.generateDataURI(
+          cachePath,
+          "image/png",
+        );
+        if (dataUri) {
+          await this.log(
+            `Generated data URI from cache, length: ${dataUri.length}`,
+          );
+          return dataUri;
         } else {
-          await this.log("Zotero.Annotations.toJSON() not available", "WARN");
+          await this.log(
+            "Failed to generate data URI from cache file",
+            "ERROR",
+          );
+          return null;
         }
-
-        // Method 2: Check if image exists in cache and read it directly
-        if (Zotero.Annotations && typeof Zotero.Annotations.getCacheImagePath === 'function') {
-          await this.log("Trying direct cache file access");
-          const cachePath = Zotero.Annotations.getCacheImagePath(item);
-          await this.log(`Cache path: ${cachePath}`);
-          
-          // Check if cache file exists using correct Zotero API
-          try {
-            const fileExists = await Zotero.File.pathToFile(cachePath).exists();
-            if (fileExists) {
-              await this.log("Cache file exists, generating data URI");
-              const dataUri = await Zotero.File.generateDataURI(cachePath, 'image/png');
-              if (dataUri) {
-                await this.log(`Generated data URI, length: ${dataUri.length}`);
-                return dataUri;
-              } else {
-                await this.log("Failed to generate data URI from cache file", "WARN");
-              }
-            } else {
-              await this.log("Cache file does not exist", "WARN");
-            }
-          } catch (fileCheckError) {
-            await this.log(`Error checking cache file existence: ${fileCheckError}`, "ERROR");
-          }
-        } else {
-          await this.log("Zotero.Annotations.getCacheImagePath() not available", "WARN");
-        }
-
       } catch (e) {
-        await this.log(`Error using Zotero.Annotations methods: ${e}`, "ERROR");
+        await this.log(`Error reading cache file: ${e}`, "ERROR");
+        return null;
+      }
+    } catch (error) {
+      await this.log(
+        `Error extracting image from annotation: ${error}`,
+        "ERROR",
+      );
+      return null;
+    }
+  }
+
+  private static async copyFromCacheToOutput(
+    annotationId: string,
+    outputDir: string,
+    annotationData: ImageAnnotationData,
+  ): Promise<string | null> {
+    try {
+      // Wait for cache file to be created
+      const cachePath = await this.waitForCacheImage(annotationId);
+      if (!cachePath) {
+        await this.log("Cache file not available for copying", "ERROR");
+        return null;
       }
 
-      // Fallback: For debugging, check all properties to understand data structure
-      await this.log("Fallback debugging - checking all annotation properties", "DEBUG");
-      const imageProps = [
-        '_annotationImage', 'annotationImage', '_image', 'image',
-        'annotationData', '_annotationData', 'data', '_data'
-      ];
-      
-      for (const prop of imageProps) {
-        const value = (item as any)[prop];
-        if (value !== undefined && value !== null) {
-          const valueType = typeof value;
-          let valueInfo = `${valueType}`;
-          
-          if (valueType === 'string') {
-            valueInfo += `(${value.length} chars)${value.startsWith('data:') ? ' [data URL]' : ''}`;
-            if (value.length > 0 && value.length < 200) {
-              valueInfo += ` - content: "${value}"`;
-            } else if (value.length > 0) {
-              valueInfo += ` - starts with: "${value.substring(0, 100)}..."`;
-            }
-          }
-          
-          await this.log(`Property ${prop}: ${valueInfo}`, "DEBUG");
-          
-          // If it's a data URL, return it
-          if (valueType === 'string' && value.startsWith('data:image/')) {
-            await this.log(`Using ${prop} as image data source`);
-            return value;
-          }
-        }
+      // Validate and create output directory if it doesn't exist
+      const outputDirNS = Zotero.File.pathToFile(outputDir);
+      if (!outputDirNS.exists()) {
+        outputDirNS.create(
+          (Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1,
+          0o755,
+        );
       }
-      
-      await this.log("No image data found - annotation cache may not be ready yet", "WARN");
-      return null;
+
+      if (!outputDirNS.isDirectory()) {
+        await this.log(`Output path is not a directory: ${outputDir}`, "ERROR");
+        return null;
+      }
+
+      // Generate filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeTitle = this.sanitizeFileName(
+        annotationData.title || "Unknown",
+      );
+      const filename = `${safeTitle}_${annotationData.itemKey}_p${annotationData.pageNumber}_${timestamp}.png`;
+
+      // Create full file path - use OS-appropriate path separator
+      const separator = Zotero.isWin ? "\\" : "/";
+      const destPath = `${outputDir}${separator}${filename}`;
+
+      await this.log(`Copying from ${cachePath} to ${destPath}`);
+
+      // Copy file using OS.File.copy
+      try {
+        await OS.File.copy(cachePath, destPath);
+        await this.log("Successfully copied cache file to output directory");
+      } catch (copyError) {
+        await this.log(`OS.File.copy failed: ${copyError}`, "ERROR");
+        throw copyError;
+      }
+
+      await this.log(`Saved image: ${filename}`);
+      return destPath;
     } catch (error) {
-      await this.log(`Error extracting image from annotation: ${error}`, "ERROR");
+      await this.log(`Error copying image to directory: ${error}`, "ERROR");
       return null;
     }
   }
@@ -213,11 +301,35 @@ export class ImageSaver {
     outputDir: string,
     annotationData: ImageAnnotationData,
   ): Promise<string | null> {
+    // For compatibility, we'll try the direct copy method first
+    // If that fails, fall back to the data URL method
+
+    try {
+      // Try direct copy from cache first (preferred method)
+      const copyResult = await this.copyFromCacheToOutput(
+        annotationData.annotationId,
+        outputDir,
+        annotationData,
+      );
+      if (copyResult) {
+        return copyResult;
+      }
+    } catch (error) {
+      await this.log(
+        `Direct copy failed, falling back to data URL method: ${error}`,
+        "WARN",
+      );
+    }
+
+    // Fallback to data URL method
     try {
       // Validate and create directory if it doesn't exist
       const outputDirNS = Zotero.File.pathToFile(outputDir);
       if (!outputDirNS.exists()) {
-        outputDirNS.create((Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1, 0o755);
+        outputDirNS.create(
+          (Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1,
+          0o755,
+        );
       }
 
       if (!outputDirNS.isDirectory()) {
@@ -226,14 +338,16 @@ export class ImageSaver {
       }
 
       // Extract base64 data and determine file extension
-      const matches = imageDataUrl.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+      const matches = imageDataUrl.match(
+        /^data:image\/([a-zA-Z]+);base64,(.+)$/,
+      );
       if (!matches) {
         await this.log("Invalid image data URL format", "ERROR");
         return null;
       }
 
       const [, extension, base64Data] = matches;
-      
+
       // Generate filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const safeTitle = this.sanitizeFileName(
@@ -244,46 +358,33 @@ export class ImageSaver {
       // Create full file path - use OS-appropriate path separator
       const separator = Zotero.isWin ? "\\" : "/";
       const filePath = `${outputDir}${separator}${filename}`;
-      
-      // Write file using Zotero's file API
+
+      // Write file using Zotero's binary file API (following Zotero's pattern)
       await this.log(`Writing file to: ${filePath}`);
-      
-      // Convert the data URI to a Blob (like Zotero does internally)
-      await this.log("Converting data URI to Blob for proper binary writing");
-      
+
+      // Convert base64 data to Uint8Array (following Zotero's reader.js and editorInstance.js pattern)
+      await this.log("Converting base64 data to Uint8Array for binary writing");
+
       try {
-        // Method 1: Use the browser's fetch API to create a proper blob, then convert to ArrayBuffer
-        const response = await fetch(imageDataUrl);
-        const blob = await response.blob();
-        await this.log(`Created blob with size: ${blob.size} bytes, type: ${blob.type}`);
-        
-        // Convert blob to ArrayBuffer for Zotero.File.putContentsAsync
-        const arrayBuffer = await blob.arrayBuffer();
-        await Zotero.File.putContentsAsync(filePath, arrayBuffer);
-        await this.log("Successfully wrote blob ArrayBuffer to file");
-        
-      } catch (blobError) {
-        await this.log(`Blob write failed, trying manual conversion: ${blobError}`, "WARN");
-        
-        try {
-          // Method 2: Manual conversion to ArrayBuffer (keeping binary integrity)
-          const binaryString = atob(base64Data);
-          const buffer = new ArrayBuffer(binaryString.length);
-          const bytes = new Uint8Array(buffer);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          
-          // Write as ArrayBuffer (proper binary format)
-          await Zotero.File.putContentsAsync(filePath, buffer);
-          await this.log("Successfully wrote manual ArrayBuffer to file");
-          
-        } catch (arrayError) {
-          await this.log(`Array write failed: ${arrayError}`, "ERROR");
-          throw arrayError;
+        // Convert base64 to binary string, then to Uint8Array (Zotero's pattern)
+        const binaryString = atob(base64Data);
+        const u8arr = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          u8arr[i] = binaryString.charCodeAt(i);
         }
+
+        await this.log(`Created Uint8Array with ${u8arr.length} bytes`);
+
+        // Write directly using OS.File.writeAtomic (same as Zotero's image saving)
+        await OS.File.writeAtomic(filePath, u8arr);
+        await this.log(
+          "Successfully wrote image file using OS.File.writeAtomic",
+        );
+      } catch (writeError) {
+        await this.log(`OS.File.writeAtomic failed: ${writeError}`, "ERROR");
+        throw writeError;
       }
-      
+
       await this.log(`Saved image: ${filename}`);
       return filePath;
     } catch (error) {
@@ -324,7 +425,10 @@ export class ImageSaver {
             .join(" ");
         });
 
-      const year = parentItem.getField("year") || parentItem.getField("date")?.substring(0, 4) || "";
+      const year =
+        parentItem.getField("year") ||
+        parentItem.getField("date")?.substring(0, 4) ||
+        "";
 
       return { title, authors, year };
     } catch (error) {

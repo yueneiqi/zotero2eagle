@@ -14,6 +14,7 @@ When the plugin is active and an **Output Directory** is configured in preferenc
 ## Log file location
 
 If your Output Directory is set to `/Users/yourname/Documents/Zotero2Eagle/`, then logs will be stored in:
+
 ```
 /Users/yourname/Documents/Zotero2Eagle/logs/zotero2eagle_2025-08-26.log
 ```
@@ -21,19 +22,22 @@ If your Output Directory is set to `/Users/yourname/Documents/Zotero2Eagle/`, th
 ## What gets logged
 
 ### Plugin Events
+
 - Plugin startup and shutdown
 - Configuration loading
 - PDF button initialization
 
-### Image Annotation Processing  
+### Image Annotation Processing
+
 - When image annotations are detected
 - Image extraction attempts and results
 - File save operations (success/failure)
 - Error conditions and debugging info
 
 ### Log Levels
+
 - **INFO**: Normal operations (green in progress window)
-- **WARN**: Warnings like missing configuration (yellow)  
+- **WARN**: Warnings like missing configuration (yellow)
 - **ERROR**: Failures and exceptions (red)
 - **DEBUG**: Detailed debugging information
 
@@ -43,7 +47,7 @@ If your Output Directory is set to `/Users/yourname/Documents/Zotero2Eagle/`, th
 [2025-08-26T15:30:23.456Z] [INFO] [Startup] Zotero2Eagle plugin starting up
 [2025-08-26T15:30:24.789Z] [INFO] [ImageSaver] Starting image save for annotation ABC123
 [2025-08-26T15:30:24.890Z] [INFO] [ImageSaver] Output directory configured: /Users/name/Documents/Zotero2Eagle
-[2025-08-26T15:30:25.123Z] [INFO] [ImageSaver] Extracted image data, size: 45678 characters  
+[2025-08-26T15:30:25.123Z] [INFO] [ImageSaver] Extracted image data, size: 45678 characters
 [2025-08-26T15:30:25.234Z] [INFO] [ImageSaver] Image saved successfully to: /Users/name/Documents/Zotero2Eagle/Document_Title_ABC123_p5_2025-08-26T15-30-25-234Z.png
 [2025-08-26T15:30:25.235Z] [INFO] [ImageSaver] [SUCCESS] Saved annotation ABC123 as Document_Title_ABC123_p5_2025-08-26T15-30-25-234Z.png
 ```
@@ -51,6 +55,7 @@ If your Output Directory is set to `/Users/yourname/Documents/Zotero2Eagle/`, th
 ## Disabling file logging
 
 File logging is automatically disabled if:
+
 - No Output Directory is configured in plugin preferences
 - The Output Directory path is invalid or inaccessible
 - File system errors occur (fallback to console-only logging)
@@ -58,8 +63,9 @@ File logging is automatically disabled if:
 ## Privacy note
 
 Log files may contain:
+
 - Document titles and metadata
-- File paths on your system  
+- File paths on your system
 - Error messages with system information
 - Annotation IDs (not the actual annotation content)
 
