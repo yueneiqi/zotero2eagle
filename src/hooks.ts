@@ -8,6 +8,7 @@ import {
 import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
+import { FileLogger } from "./utils/fileLogger";
 
 async function onStartup() {
   await Promise.all([
@@ -17,6 +18,10 @@ async function onStartup() {
   ]);
 
   initLocale();
+
+  // Initialize file logger
+  await FileLogger.initializeLogger();
+  await FileLogger.info("Startup", "Zotero2Eagle plugin starting up");
 
   BasicExampleFactory.registerPrefs();
 
@@ -106,7 +111,8 @@ async function onMainWindowUnload(win: Window): Promise<void> {
   addon.data.dialog?.window?.close();
 }
 
-function onShutdown(): void {
+async function onShutdown(): Promise<void> {
+  await FileLogger.info("Shutdown", "Zotero2Eagle plugin shutting down");
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
   // Remove PDF button

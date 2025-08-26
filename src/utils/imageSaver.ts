@@ -1,4 +1,5 @@
 import { getPref } from "./prefs";
+import { FileLogger } from "./fileLogger";
 
 export interface ImageAnnotationData {
   annotationId: string;
@@ -12,31 +13,40 @@ export interface ImageAnnotationData {
 }
 
 export class ImageSaver {
-  static log(msg: string) {
-    Zotero.debug("zotero2eagle-ImageSaver: " + msg);
+  static async log(msg: string, level: "INFO" | "WARN" | "ERROR" | "DEBUG" = "INFO") {
+    await FileLogger.log(level, "ImageSaver", msg);
   }
 
   static async saveAnnotationImage(
     item: any,
     annotationData: ImageAnnotationData,
   ): Promise<boolean> {
+    await FileLogger.initializeLogger();
+    
     try {
+      await this.log(`Starting image save for annotation ${annotationData.annotationId}`);
+      
       const outputDir = getPref("outputDirectory") as string;
       if (!outputDir || outputDir.trim() === "") {
-        this.log("No output directory configured, skipping image save");
+        await this.log("No output directory configured, skipping image save", "WARN");
         return false;
       }
 
+      await this.log(`Output directory configured: ${outputDir}`);
+
       if (!item || !item.isAnnotation()) {
-        this.log("Invalid item provided - not an annotation");
+        await this.log("Invalid item provided - not an annotation", "ERROR");
         return false;
       }
 
       const imageData = await this.extractImageFromAnnotation(item);
       if (!imageData) {
-        this.log("No image data found in annotation");
+        await this.log("No image data found in annotation", "WARN");
+        await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, "No image data found");
         return false;
       }
+
+      await this.log(`Extracted image data, size: ${imageData.length} characters`);
 
       const filePath = await this.saveImageToDirectory(
         imageData,
@@ -45,13 +55,18 @@ export class ImageSaver {
       );
       
       if (filePath) {
-        this.log(`Image saved successfully to: ${filePath}`);
+        const filename = filePath.split(/[/\\]/).pop() || "unknown";
+        await this.log(`Image saved successfully to: ${filePath}`);
+        await FileLogger.logImageSaveEvent(true, annotationData.annotationId, filename);
         return true;
       }
       
+      await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, "Failed to save to directory");
       return false;
     } catch (error) {
-      this.log(`Error saving annotation image: ${error}`);
+      const errorMsg = `Error saving annotation image: ${error}`;
+      await this.log(errorMsg, "ERROR");
+      await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, String(error));
       return false;
     }
   }
@@ -62,44 +77,44 @@ export class ImageSaver {
         return null;
       }
 
-      this.log("Attempting to extract image from annotation");
+      await this.log("Attempting to extract image from annotation");
 
       // In Zotero 7+, image annotations may have associated image data
       // Check if the annotation has an image property in its annotation data
       try {
         const annotationData = item.annotationData;
         if (annotationData && annotationData.image) {
-          this.log("Found image data in annotation.annotationData.image");
+          await this.log("Found image data in annotation.annotationData.image");
           return annotationData.image;
         }
       } catch (e) {
-        this.log(`No annotationData.image found: ${e}`);
+        await this.log(`No annotationData.image found: ${e}`, "DEBUG");
       }
 
       // Try to get image data from annotation comment or text
       const annotationComment = item.annotationComment;
       if (annotationComment && annotationComment.startsWith("data:image/")) {
-        this.log("Found image data in annotation comment");
+        await this.log("Found image data in annotation comment");
         return annotationComment;
       }
 
       // Try annotation text field
       const annotationText = item.annotationText;
       if (annotationText && annotationText.startsWith("data:image/")) {
-        this.log("Found image data in annotation text");
+        await this.log("Found image data in annotation text");
         return annotationText;
       }
 
       // Check for child attachments (less likely but possible)
       const attachments = await item.getAttachments();
       if (attachments && attachments.length > 0) {
-        this.log(`Found ${attachments.length} attachments, checking for images`);
+        await this.log(`Found ${attachments.length} attachments, checking for images`);
         for (const attachmentID of attachments) {
           const attachment = await Zotero.Items.getAsync(attachmentID);
           if (attachment && (attachment as any).attachmentMIMEType?.startsWith("image/")) {
             const file = (attachment as any).getFile();
             if (file && await file.exists()) {
-              this.log(`Reading image file: ${file.path}`);
+              await this.log(`Reading image file: ${file.path}`);
               const data = await Zotero.File.getBinaryContentsAsync(file.path);
               const uint8Array = new Uint8Array(data as unknown as ArrayBuffer);
               const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
@@ -111,13 +126,13 @@ export class ImageSaver {
       }
 
       // For debugging, log what properties the annotation has
-      this.log(`Annotation properties: ${Object.keys(item).join(", ")}`);
-      this.log(`Annotation type: ${item.annotationType}, hasText: ${!!item.annotationText}, hasComment: ${!!item.annotationComment}`);
+      await this.log(`Annotation properties: ${Object.keys(item).join(", ")}`, "DEBUG");
+      await this.log(`Annotation type: ${item.annotationType}, hasText: ${!!item.annotationText}, hasComment: ${!!item.annotationComment}`, "DEBUG");
       
-      this.log("No image data found in annotation");
+      await this.log("No image data found in annotation", "WARN");
       return null;
     } catch (error) {
-      this.log(`Error extracting image from annotation: ${error}`);
+      await this.log(`Error extracting image from annotation: ${error}`, "ERROR");
       return null;
     }
   }
@@ -135,14 +150,14 @@ export class ImageSaver {
       }
 
       if (!outputDirNS.isDirectory()) {
-        this.log(`Output path is not a directory: ${outputDir}`);
+        await this.log(`Output path is not a directory: ${outputDir}`, "ERROR");
         return null;
       }
 
       // Extract base64 data and determine file extension
       const matches = imageDataUrl.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
       if (!matches) {
-        this.log("Invalid image data URL format");
+        await this.log("Invalid image data URL format", "ERROR");
         return null;
       }
 
@@ -167,10 +182,10 @@ export class ImageSaver {
       // Write file
       await Zotero.File.putContentsAsync(filePath, bytes.buffer);
       
-      this.log(`Saved image: ${filename}`);
+      await this.log(`Saved image: ${filename}`);
       return filePath;
     } catch (error) {
-      this.log(`Error saving image to directory: ${error}`);
+      await this.log(`Error saving image to directory: ${error}`, "ERROR");
       return null;
     }
   }
@@ -211,7 +226,7 @@ export class ImageSaver {
 
       return { title, authors, year };
     } catch (error) {
-      this.log(`Error getting parent item metadata: ${error}`);
+      await this.log(`Error getting parent item metadata: ${error}`, "ERROR");
       return {};
     }
   }

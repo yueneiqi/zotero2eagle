@@ -1,5 +1,6 @@
 import { config } from "../../package.json";
 import { ImageSaver, ImageAnnotationData } from "../utils/imageSaver";
+import { FileLogger } from "../utils/fileLogger";
 
 class PDFButton {
   id: string | null;
@@ -38,8 +39,8 @@ class PDFButton {
     this.initialized = true;
   }
 
-  log(msg: string) {
-    Zotero.debug("zotero2eagle: " + msg);
+  async log(msg: string, level: "INFO" | "WARN" | "ERROR" | "DEBUG" = "INFO") {
+    await FileLogger.log(level, "PDFButton", msg);
   }
 
   // Proxy the existing "Select Area" button instead of creating a new one
@@ -99,7 +100,7 @@ class PDFButton {
               if (item && item.isAnnotation()) {
                 const annotationId = item.key;
                 const annotationType = item.annotationType;
-                this.log(`New annotation detected with ID: ${annotationId}, Type: ${annotationType}`);
+                await this.log(`New annotation detected with ID: ${annotationId}, Type: ${annotationType}`);
 
                 // Get the parent item ID (the PDF item)
                 const parentItem = item.parentItem;
@@ -194,14 +195,14 @@ class PDFButton {
         const saveSuccess = await ImageSaver.saveAnnotationImage(item, annotationData);
         if (saveSuccess) {
           imageSaveStatus = "Image saved to output directory";
-          this.log("Image annotation saved to output directory");
+          await this.log("Image annotation saved to output directory");
         } else {
           imageSaveStatus = "Image save failed or disabled";
-          this.log("Failed to save image annotation or feature disabled");
+          await this.log("Failed to save image annotation or feature disabled", "WARN");
         }
       } catch (error) {
         imageSaveStatus = "Image save error occurred";
-        this.log(`Error saving image annotation: ${error}`);
+        await this.log(`Error saving image annotation: ${error}`, "ERROR");
       }
     }
 
