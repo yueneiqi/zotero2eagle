@@ -102,97 +102,54 @@ export class ImageSaver {
         return null;
       }
 
-      await this.log("Attempting to extract image from annotation");
+      await this.log("Attempting to extract image from annotation using Zotero's cache system");
 
-      // First, try to access the internal _annotationImage property
-      const _annotationImage = (item as any)._annotationImage;
-      await this.log(`Checking _annotationImage: ${_annotationImage ? `exists, type: ${typeof _annotationImage}, length: ${_annotationImage.length || 'N/A'}` : 'null/undefined'}`, "DEBUG");
-      if (_annotationImage) {
-        await this.log("Found image data in item._annotationImage");
-        return _annotationImage;
-      }
-
-      // Try the public annotationImage property
-      const annotationImage = item.annotationImage;
-      await this.log(`Checking annotationImage: ${annotationImage ? `exists, type: ${typeof annotationImage}, length: ${annotationImage.length || 'N/A'}` : 'null/undefined'}`, "DEBUG");
-      if (annotationImage) {
-        await this.log("Found image data in item.annotationImage");
-        return annotationImage;
-      }
-
-      // In Zotero 7+, image annotations may have associated image data
-      // Check if the annotation has an image property in its annotation data
+      // Use Zotero's annotation system to get the image data
+      // This is the correct way according to Zotero's source code
       try {
-        const annotationData = item.annotationData;
-        if (annotationData && annotationData.image) {
-          await this.log("Found image data in annotation.annotationData.image");
-          return annotationData.image;
-        }
-      } catch (e) {
-        await this.log(`No annotationData.image found: ${e}`, "DEBUG");
-      }
-
-      // Try to get image data from annotation comment or text
-      const annotationComment = item.annotationComment;
-      if (annotationComment && annotationComment.startsWith("data:image/")) {
-        await this.log("Found image data in annotation comment");
-        return annotationComment;
-      }
-
-      // Try annotation text field
-      const annotationText = item.annotationText;
-      if (annotationText && annotationText.startsWith("data:image/")) {
-        await this.log("Found image data in annotation text");
-        return annotationText;
-      }
-
-      // Try to get image data using Zotero's annotation methods
-      try {
-        // Check if the annotation has a getAnnotationImage method
-        if (typeof (item as any).getAnnotationImage === 'function') {
-          await this.log("Trying item.getAnnotationImage() method");
-          const imageData = await (item as any).getAnnotationImage();
-          if (imageData) {
-            await this.log(`Got image data from getAnnotationImage: ${typeof imageData}, length: ${imageData.length || 'N/A'}`);
-            return imageData;
+        // Method 1: Use Zotero.Annotations.toJSON() - the official way
+        if (Zotero.Annotations && typeof Zotero.Annotations.toJSON === 'function') {
+          await this.log("Trying Zotero.Annotations.toJSON() method");
+          const jsonData = await Zotero.Annotations.toJSON(item);
+          if (jsonData && jsonData.image) {
+            await this.log(`Got image data via Zotero.Annotations.toJSON, length: ${jsonData.image.length}`);
+            return jsonData.image;
+          } else {
+            await this.log("Zotero.Annotations.toJSON() returned no image data", "WARN");
           }
+        } else {
+          await this.log("Zotero.Annotations.toJSON() not available", "WARN");
         }
 
-        // Check if there's an image property in the annotation's JSON representation
-        const jsonData = item.toJSON ? item.toJSON() : null;
-        if (jsonData && jsonData.annotationImage) {
-          await this.log("Found image in toJSON().annotationImage");
-          return jsonData.annotationImage;
-        }
-      } catch (e) {
-        await this.log(`Error trying annotation methods: ${e}`, "DEBUG");
-      }
-
-      // Check for child attachments (less likely but possible)
-      const attachments = await item.getAttachments();
-      if (attachments && attachments.length > 0) {
-        await this.log(`Found ${attachments.length} attachments, checking for images`);
-        for (const attachmentID of attachments) {
-          const attachment = await Zotero.Items.getAsync(attachmentID);
-          if (attachment && (attachment as any).attachmentMIMEType?.startsWith("image/")) {
-            const file = (attachment as any).getFile();
-            if (file && await file.exists()) {
-              await this.log(`Reading image file: ${file.path}`);
-              const data = await Zotero.File.getBinaryContentsAsync(file.path);
-              const uint8Array = new Uint8Array(data as unknown as ArrayBuffer);
-              const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
-              const mimeType = (attachment as any).attachmentMIMEType || "image/png";
-              return `data:${mimeType};base64,${base64}`;
+        // Method 2: Check if image exists in cache and read it directly
+        if (Zotero.Annotations && typeof Zotero.Annotations.getCacheImagePath === 'function') {
+          await this.log("Trying direct cache file access");
+          const cachePath = Zotero.Annotations.getCacheImagePath(item);
+          await this.log(`Cache path: ${cachePath}`);
+          
+          // Check if cache file exists
+          if (await (Zotero as any).File.pathExists(cachePath)) {
+            await this.log("Cache file exists, generating data URI");
+            const dataUri = await Zotero.File.generateDataURI(cachePath, 'image/png');
+            if (dataUri) {
+              await this.log(`Generated data URI, length: ${dataUri.length}`);
+              return dataUri;
+            } else {
+              await this.log("Failed to generate data URI from cache file", "WARN");
             }
+          } else {
+            await this.log("Cache file does not exist", "WARN");
           }
+        } else {
+          await this.log("Zotero.Annotations.getCacheImagePath() not available", "WARN");
         }
+
+      } catch (e) {
+        await this.log(`Error using Zotero.Annotations methods: ${e}`, "ERROR");
       }
 
-      // For debugging, log what properties the annotation has
-      await this.log(`Annotation properties: ${Object.keys(item).join(", ")}`, "DEBUG");
-      await this.log(`Annotation type: ${item.annotationType}, hasText: ${!!item.annotationText}, hasComment: ${!!item.annotationComment}`, "DEBUG");
-      
-      // Check for various image-related properties
+      // Fallback: For debugging, check all properties to understand data structure
+      await this.log("Fallback debugging - checking all annotation properties", "DEBUG");
       const imageProps = [
         '_annotationImage', 'annotationImage', '_image', 'image',
         'annotationData', '_annotationData', 'data', '_data'
@@ -206,27 +163,24 @@ export class ImageSaver {
           
           if (valueType === 'string') {
             valueInfo += `(${value.length} chars)${value.startsWith('data:') ? ' [data URL]' : ''}`;
-            // Show first 100 chars for debugging
-            if (value.length > 0) {
+            if (value.length > 0 && value.length < 200) {
+              valueInfo += ` - content: "${value}"`;
+            } else if (value.length > 0) {
               valueInfo += ` - starts with: "${value.substring(0, 100)}..."`;
             }
-          } else if (valueType === 'object' && value !== null) {
-            valueInfo += ` - keys: [${Object.keys(value).join(', ')}]`;
           }
           
-          await this.log(`Found property ${prop}: ${valueInfo}`, "DEBUG");
+          await this.log(`Property ${prop}: ${valueInfo}`, "DEBUG");
           
-          // If it's a string and looks like image data, try to return it
+          // If it's a data URL, return it
           if (valueType === 'string' && value.startsWith('data:image/')) {
             await this.log(`Using ${prop} as image data source`);
             return value;
           }
-        } else {
-          await this.log(`Property ${prop}: ${value}`, "DEBUG");
         }
       }
       
-      await this.log("No image data found in annotation", "WARN");
+      await this.log("No image data found - annotation cache may not be ready yet", "WARN");
       return null;
     } catch (error) {
       await this.log(`Error extracting image from annotation: ${error}`, "ERROR");
