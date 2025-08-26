@@ -135,15 +135,7 @@ class PDFButton {
                   pageNumber,
                 );
 
-                // If this is an image annotation, try to capture it from the PDF reader
-                if (annotationType === "image") {
-                  await this.log("Image annotation detected, attempting to capture from PDF reader", "DEBUG");
-                  try {
-                    await this.captureImageFromPDFReader(item, annotationId, pageNumber);
-                  } catch (error) {
-                    await this.log(`Error capturing image from PDF reader: ${error}`, "ERROR");
-                  }
-                }
+                // Note: Image capture will be handled by the ImageSaver utility
                 // Unregister the observer after finding the annotation
                 if (this.annotationObserverID) {
                   Zotero.Notifier.unregisterObserver(this.annotationObserverID);
@@ -267,42 +259,6 @@ class PDFButton {
     progressWindow.startCloseTimer(5000);
   }
 
-  // Attempt to capture image directly from PDF reader
-  async captureImageFromPDFReader(item: any, annotationId: string, pageNumber: string): Promise<void> {
-    try {
-      await this.log(`Attempting to capture image from PDF reader for annotation ${annotationId}`, "DEBUG");
-
-      // Try to access the active reader
-      const reader = Zotero.Reader.getByTabID(Zotero.Reader.getActiveTabID());
-      if (!reader || !reader._iframeWindow) {
-        await this.log("No active PDF reader found", "WARN");
-        return;
-      }
-
-      await this.log("Found active PDF reader, attempting screenshot capture");
-
-      // Try to get the annotation bounds and capture that area
-      const annotationPosition = item.annotationPosition;
-      if (annotationPosition) {
-        const position = JSON.parse(annotationPosition);
-        await this.log(`Annotation position: ${JSON.stringify(position)}`, "DEBUG");
-
-        // This is a simplified approach - we could try to capture the specific area
-        // For now, let's try to get a screenshot of the current PDF page
-        const pdfWindow = reader._iframeWindow;
-        
-        if (pdfWindow && pdfWindow.PDFViewerApplication) {
-          await this.log("Found PDFViewerApplication, attempting to render annotation area");
-          
-          // This is where we would implement the actual image capture
-          // For now, just log that we reached this point
-          await this.log("TODO: Implement actual image capture from PDF canvas", "DEBUG");
-        }
-      }
-    } catch (error) {
-      await this.log(`Failed to capture image from PDF reader: ${error}`, "ERROR");
-    }
-  }
 
   addAllButtons() {
     this.log("proxy button for all open tabs");

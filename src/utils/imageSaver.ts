@@ -66,9 +66,24 @@ export class ImageSaver {
 
       const imageData = await this.extractImageFromAnnotation(item);
       if (!imageData) {
-        await this.log("No image data found in annotation", "WARN");
-        await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, "No image data found");
-        return false;
+        // Try again after a short delay - cache might not be ready yet
+        await this.log("Image not found immediately, waiting 2 seconds and retrying...");
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const retryImageData = await this.extractImageFromAnnotation(item);
+        if (!retryImageData) {
+          await this.log("No image data found in annotation after retry", "WARN");
+          await FileLogger.logImageSaveEvent(false, annotationData.annotationId, undefined, "No image data found");
+          return false;
+        }
+        await this.log("Image data found on retry");
+        return this.saveImageToDirectory(retryImageData, expandedOutputDir, annotationData).then(filePath => {
+          if (filePath) {
+            const filename = filePath.split(/[/\\]/).pop() || "unknown";
+            FileLogger.logImageSaveEvent(true, annotationData.annotationId, filename);
+            return true;
+          }
+          return false;
+        });
       }
 
       await this.log(`Extracted image data, size: ${imageData.length} characters`);
@@ -127,18 +142,23 @@ export class ImageSaver {
           const cachePath = Zotero.Annotations.getCacheImagePath(item);
           await this.log(`Cache path: ${cachePath}`);
           
-          // Check if cache file exists
-          if (await (Zotero as any).File.pathExists(cachePath)) {
-            await this.log("Cache file exists, generating data URI");
-            const dataUri = await Zotero.File.generateDataURI(cachePath, 'image/png');
-            if (dataUri) {
-              await this.log(`Generated data URI, length: ${dataUri.length}`);
-              return dataUri;
+          // Check if cache file exists using correct Zotero API
+          try {
+            const fileExists = await Zotero.File.pathToFile(cachePath).exists();
+            if (fileExists) {
+              await this.log("Cache file exists, generating data URI");
+              const dataUri = await Zotero.File.generateDataURI(cachePath, 'image/png');
+              if (dataUri) {
+                await this.log(`Generated data URI, length: ${dataUri.length}`);
+                return dataUri;
+              } else {
+                await this.log("Failed to generate data URI from cache file", "WARN");
+              }
             } else {
-              await this.log("Failed to generate data URI from cache file", "WARN");
+              await this.log("Cache file does not exist", "WARN");
             }
-          } else {
-            await this.log("Cache file does not exist", "WARN");
+          } catch (fileCheckError) {
+            await this.log(`Error checking cache file existence: ${fileCheckError}`, "ERROR");
           }
         } else {
           await this.log("Zotero.Annotations.getCacheImagePath() not available", "WARN");
