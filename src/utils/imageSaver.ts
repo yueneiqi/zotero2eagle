@@ -32,47 +32,8 @@ export class ImageSaver {
         `Starting image save for annotation ${annotationData.annotationId}`,
       );
 
-      const outputDir = getPref("outputDirectory") as string;
-      if (!outputDir || outputDir.trim() === "") {
-        await this.log(
-          "No output directory configured, skipping image save",
-          "WARN",
-        );
-        return false;
-      }
-
-      // Expand tilde (~) to home directory if present
-      let expandedOutputDir = outputDir;
-      if (outputDir.startsWith("~")) {
-        try {
-          // Use OS-specific approach to get home directory
-          const os = Zotero.isWin ? "win" : Zotero.isMac ? "mac" : "linux";
-          let homePath = "";
-
-          if (os === "win") {
-            homePath = (Components as any).classes[
-              "@mozilla.org/file/directory_service;1"
-            ]
-              .getService((Components as any).interfaces.nsIProperties)
-              .get("Home", (Components as any).interfaces.nsIFile).path;
-          } else {
-            // Unix-like systems (Mac, Linux)
-            homePath = (Components as any).classes[
-              "@mozilla.org/file/directory_service;1"
-            ]
-              .getService((Components as any).interfaces.nsIProperties)
-              .get("Home", (Components as any).interfaces.nsIFile).path;
-          }
-
-          expandedOutputDir = outputDir.replace("~", homePath);
-        } catch (e) {
-          await this.log(`Failed to expand home directory: ${e}`, "WARN");
-        }
-      }
-
-      await this.log(
-        `Output directory configured: ${outputDir} (expanded: ${expandedOutputDir})`,
-      );
+      // Get and expand output directory (optional for local backup)
+      const expandedOutputDir = await this.expandOutputDirectory();
 
       if (!item || !item.isAnnotation()) {
         await this.log("Invalid item provided - not an annotation", "ERROR");
@@ -88,8 +49,20 @@ export class ImageSaver {
       // Only proceed with local backup if output directory is configured
       if (!expandedOutputDir || expandedOutputDir.trim() === "") {
         await this.log("No output directory configured, skipping local backup");
-        // If Eagle integration worked and no local backup needed, consider it success
-        return eagleIntegrationEnabled;
+        // If Eagle integration is enabled, consider the operation successful
+        // If neither Eagle nor local backup is configured, that's a configuration issue
+        if (eagleIntegrationEnabled) {
+          await this.log(
+            "Eagle integration is enabled, operation considered successful",
+          );
+          return true;
+        } else {
+          await this.log(
+            "Neither Eagle integration nor local backup is configured",
+            "WARN",
+          );
+          return false;
+        }
       }
 
       const imageData = await this.extractImageFromAnnotation(item);
@@ -580,5 +553,49 @@ export class ImageSaver {
     }
 
     return tags;
+  }
+
+  // Helper method to get and expand the output directory
+  private static async expandOutputDirectory(): Promise<string | null> {
+    const outputDir = getPref("outputDirectory") as string;
+
+    if (!outputDir || outputDir.trim() === "") {
+      return null;
+    }
+
+    // Expand tilde (~) to home directory if present
+    let expandedOutputDir = outputDir;
+    if (outputDir.startsWith("~")) {
+      try {
+        // Use OS-specific approach to get home directory
+        const os = Zotero.isWin ? "win" : Zotero.isMac ? "mac" : "linux";
+        let homePath = "";
+
+        if (os === "win") {
+          homePath = (Components as any).classes[
+            "@mozilla.org/file/directory_service;1"
+          ]
+            .getService((Components as any).interfaces.nsIProperties)
+            .get("Home", (Components as any).interfaces.nsIFile).path;
+        } else {
+          // Unix-like systems (Mac, Linux)
+          homePath = (Components as any).classes[
+            "@mozilla.org/file/directory_service;1"
+          ]
+            .getService((Components as any).interfaces.nsIProperties)
+            .get("Home", (Components as any).interfaces.nsIFile).path;
+        }
+
+        expandedOutputDir = outputDir.replace("~", homePath);
+      } catch (e) {
+        await this.log(`Failed to expand home directory: ${e}`, "WARN");
+      }
+    }
+
+    await this.log(
+      `Output directory configured: ${outputDir} (expanded: ${expandedOutputDir})`,
+    );
+
+    return expandedOutputDir;
   }
 }
