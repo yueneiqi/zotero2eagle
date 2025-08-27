@@ -5,15 +5,12 @@
 <groupbox
   onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window });"
 >
-  <label>
-    <html:h2 data-l10n-id="pref-title"></html:h2>
-  </label>
 
   <!-- Eagle Integration Settings (grouped) -->
-  <hbox class="z2e-section-header">
-    <spacer class="z2e-label-spacer"></spacer>
-    <html:label data-l10n-id="pref-eagle-section"></html:label>
+  <hbox class="z2e-section">
+    <html:label class="z2e-section-title" data-l10n-id="pref-eagle-section"></html:label>
   </hbox>
+  <hbox class="z2e-divider"></hbox>
 
   <!-- Eagle API URL -->
   <hbox class="z2e-row">
@@ -53,7 +50,6 @@
 
   <!-- Enable Eagle Integration -->
   <hbox class="z2e-row">
-    <spacer class="z2e-label-spacer"></spacer>
     <hbox class="z2e-checkbox">
       <html:input
         type="checkbox"
@@ -67,7 +63,6 @@
     </hbox>
   </hbox>
   <hbox class="z2e-row-tight">
-    <spacer class="z2e-label-spacer"></spacer>
     <html:div class="z2e-help" data-l10n-id="pref-enable-eagle-help"></html:div>
   </hbox>
 
@@ -91,7 +86,6 @@
 
   <!-- Test Connection Button -->
   <hbox class="z2e-row">
-    <spacer class="z2e-label-spacer"></spacer>
     <hbox class="z2e-actions">
       <button
         id="__addonRef__-test-connection"
@@ -100,12 +94,13 @@
       <html:span id="__addonRef__-connection-status"></html:span>
     </hbox>
   </hbox>
+  <hbox class="z2e-divider"></hbox>
 
   <!-- Local Backup Settings -->
-  <hbox class="z2e-section-header">
-    <spacer class="z2e-label-spacer"></spacer>
-    <html:label>Local Backup</html:label>
+  <hbox class="z2e-section">
+    <html:label class="z2e-section-title">Local Backup</html:label>
   </hbox>
+  <hbox class="z2e-divider"></hbox>
 
   <!-- Output Directory -->
   <hbox class="z2e-row">
@@ -136,21 +131,11 @@
 <html:style
   ><![CDATA[
   /* Scoped to zotero2eagle preferences only */
-  /* Title styling */
-  html|h2[data-l10n-id*="pref-title"] {
-    margin: 0 0 20px 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
-    border-bottom: 2px solid #0060df;
-    padding-bottom: 8px;
-  }
 
   /* Row layout using XUL boxes */
   .z2e-row { margin: 10px 0; }
   .z2e-row-tight { margin: 4px 0 10px; }
-  .z2e-label { width: 220px; text-align: end; padding: 6px 12px 0 0; font-weight: 500; font-size: 14px; }
-  .z2e-label-spacer { width: 220px; }
+  .z2e-label { width: 160px; text-align: start; padding: 6px 12px 0 0; font-weight: 500; font-size: 14px; }
   .z2e-control { max-width: 520px; }
   .z2e-help { font-size: 12px; margin-top: 4px; line-height: 1.4; font-style: italic; max-width: 520px; opacity: .8; }
 
@@ -159,7 +144,8 @@
   html|input[id*="__addonRef__"]:focus { outline: none; }
 
   /* Section header */
-  .z2e-section-header html|label { font-weight: 600; margin: 8px 0 0; }
+  .z2e-section-title { font-weight: 700; font-size: 15px; }
+  .z2e-divider { height: 1px; background: currentColor; opacity: .15; margin: 6px 0 12px; }
 
   /* Actions and buttons */
   .z2e-actions { align-items: center; margin-top: 6px; }
@@ -205,7 +191,7 @@
 
   /* Responsive */
   @media (max-width: 720px) {
-    .z2e-label, .z2e-label-spacer { width: 0; padding-right: 0; }
+    .z2e-label { width: 100px; }
     html|input[id*="__addonRef__"] { width: 100%; max-width: 100%; }
   }
   ]]></html:style>
