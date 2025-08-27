@@ -15,6 +15,8 @@ class PDFButton {
   notifierID: string | null;
   activeReader: any | null;
   annotationObserverID: string | null;
+  annotationObserverTimer: number | null;
+  annotationScope: { libraryID?: number; tabID?: string } | null;
 
   constructor() {
     this.id = null;
@@ -25,6 +27,8 @@ class PDFButton {
     this.notifierID = null;
     this.activeReader = null;
     this.annotationObserverID = null;
+    this.annotationObserverTimer = null;
+    this.annotationScope = null;
   }
 
   init({
@@ -48,7 +52,11 @@ class PDFButton {
   }
 
   // Proxy the existing "Select Area" button instead of creating a new one
-  async proxySelectAreaButton(browserWindow: Window) {
+  async proxySelectAreaButton(
+    browserWindow: Window,
+    mainWindow?: _ZoteroTypes.MainWindow,
+    scope?: { libraryID?: number; tabID?: string },
+  ) {
     // Check if we've already proxied the button
     if (
       browserWindow.document.querySelector("#zotero2eagle-proxy-initialized")
@@ -77,8 +85,24 @@ class PDFButton {
     // Add our own click handler to the existing button
     selectAreaButton.addEventListener("click", () => {
       this.log("Proxy: Select Area button clicked");
-      // Register an observer to detect when annotations are created
-      this.registerAnnotationObserver(browserWindow);
+      // Resolve scope lazily (current reader tab and its library)
+      let resolvedScope: { libraryID?: number; tabID?: string } | undefined =
+        scope;
+      try {
+        if (!resolvedScope && mainWindow) {
+          const tabID = (mainWindow as any).Zotero_Tabs?.selectedID;
+          if (tabID) {
+            const reader = Zotero.Reader.getByTabID(tabID);
+            const libraryID = (reader as any)?._item?.libraryID;
+            resolvedScope = { libraryID, tabID };
+          }
+        }
+      } catch (e) {
+        // best-effort; scoping is optional
+      }
+
+      // Register or refresh the observer
+      this.registerAnnotationObserver(browserWindow, resolvedScope);
     });
 
     this.log("Successfully proxied Select Area button");
@@ -193,8 +217,17 @@ class PDFButton {
   }
 
   // Register an observer to watch for new annotations
-  registerAnnotationObserver(browserWindow: Window) {
-    this.log("Registering annotation observer");
+  registerAnnotationObserver(
+    browserWindow: Window,
+    scope?: { libraryID?: number; tabID?: string },
+  ) {
+    this.log("Registering/refreshing annotation observer");
+
+    // Update scope so we can filter events by the active reader's library
+    if (!this.annotationScope) this.annotationScope = {};
+    if (scope?.libraryID !== undefined)
+      this.annotationScope.libraryID = scope.libraryID;
+    if (scope?.tabID !== undefined) this.annotationScope.tabID = scope.tabID;
 
     // Register a Zotero notifier observer for item additions/changes
     const annotationCallback = {
@@ -210,6 +243,18 @@ class PDFButton {
             try {
               const item = await Zotero.Items.getAsync(id as number);
               if (item && item.isAnnotation()) {
+                // Scope by library if provided
+                try {
+                  const libID = (item as any).libraryID;
+                  if (
+                    this.annotationScope?.libraryID !== undefined &&
+                    libID !== this.annotationScope.libraryID
+                  ) {
+                    continue; // ignore unrelated libraries
+                  }
+                } catch (err) {
+                  // Ignore errors reading library scope; proceed without scoping
+                }
                 const annotationId = item.key;
                 const annotationType = item.annotationType;
                 await this.log(
@@ -255,6 +300,10 @@ class PDFButton {
                   Zotero.Notifier.unregisterObserver(this.annotationObserverID);
                   this.annotationObserverID = null;
                 }
+                if (this.annotationObserverTimer) {
+                  clearTimeout(this.annotationObserverTimer);
+                  this.annotationObserverTimer = null;
+                }
                 break;
               }
             } catch (e) {
@@ -265,20 +314,25 @@ class PDFButton {
       },
     };
 
-    // Register the observer
-    this.annotationObserverID = Zotero.Notifier.registerObserver(
-      annotationCallback,
-      ["item"],
-    );
+    // Register once, then refresh timeout on subsequent clicks (debounce)
+    if (!this.annotationObserverID) {
+      this.annotationObserverID = Zotero.Notifier.registerObserver(
+        annotationCallback,
+        ["item"],
+      );
+    }
 
-    // Set a timeout to unregister the observer if no annotation is found
-    setTimeout(() => {
+    if (this.annotationObserverTimer) {
+      clearTimeout(this.annotationObserverTimer);
+    }
+    this.annotationObserverTimer = setTimeout(() => {
       if (this.annotationObserverID) {
         Zotero.Notifier.unregisterObserver(this.annotationObserverID);
         this.annotationObserverID = null;
         this.log("Annotation observer timeout - unregistered");
       }
-    }, 10000); // 10 seconds timeout
+      this.annotationObserverTimer = null;
+    }, 10000) as unknown as number;
   }
 
   // Show the annotation details (ID, type, item ID, item key, and page number) in a popup
@@ -389,7 +443,7 @@ class PDFButton {
       for (const bro of browsers) {
         const browserWindow = bro.contentWindow;
         // Run async but don't wait for completion to avoid blocking
-        this.proxySelectAreaButton(browserWindow).catch((error) =>
+        this.proxySelectAreaButton(browserWindow, win).catch((error) =>
           this.log(`Error proxying button: ${error}`, "ERROR"),
         );
       }
@@ -444,7 +498,10 @@ class PDFButton {
           const browserWindow = reader._iframeWindow;
           if (browserWindow) {
             // Run async but don't wait for completion to avoid blocking
-            this.proxySelectAreaButton(browserWindow).catch((error) =>
+            this.proxySelectAreaButton(browserWindow, undefined, {
+              libraryID: (reader as any)?._item?.libraryID,
+              tabID: reader.tabID,
+            }).catch((error) =>
               this.log(`Error proxying button: ${error}`, "ERROR"),
             );
           }
