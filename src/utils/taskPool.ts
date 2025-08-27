@@ -24,8 +24,9 @@ export default class TaskPool {
         }
       }
     };
-    const promise = wrapped().finally(() => this.tasks.delete(promise));
+    const promise = wrapped();
     this.tasks.add(promise);
+    promise.finally(() => this.tasks.delete(promise));
   }
 
   async drain() {

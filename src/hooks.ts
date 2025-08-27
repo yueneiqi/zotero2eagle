@@ -2,6 +2,7 @@ import { getString, initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { FileLogger } from "./utils/fileLogger";
+import { version } from "../package.json";
 /**
  * Minimal, non-example startup hooks for Zotero2Eagle
  */
@@ -25,7 +26,8 @@ async function onStartup() {
   // Initialize PDF button functionality
   addon.data.pdfButton.init({
     id: addon.data.config.addonID,
-    version: "0.0.1", //addon.data.config.version, - this property doesn't exist in config
+    // Use package.json version to avoid drift
+    version,
     rootURI: rootURI,
   });
   addon.data.pdfButton.main();
@@ -37,6 +39,9 @@ async function onStartup() {
   // Mark initialized as true to confirm plugin loading status
   // outside of the plugin (e.g. scaffold testing process)
   addon.data.initialized = true;
+
+  // Rotate log if the current file is large
+  await FileLogger.rotateLogFile();
 }
 
 async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {

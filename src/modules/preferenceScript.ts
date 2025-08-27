@@ -1,6 +1,11 @@
 // Preferences script for Zotero2Eagle
 import { getPref, setPref } from "../utils/prefs";
 import { testEagleConnection } from "../utils/eagleApi";
+import { config } from "../../package.json";
+
+const REF = config.addonRef;
+const id = (suffix: string) => `zotero-prefpane-${REF}-${suffix}`;
+const btn = (suffix: string) => `${REF}-${suffix}`;
 
 export async function registerPrefsScripts(_window: Window) {
   // This function is called when the prefs window is opened
@@ -27,13 +32,13 @@ async function updatePrefsUI() {
 
   // Load current preference values
   const apiUrlElement = document.getElementById(
-    "zotero-prefpane-zotero2eagle-api-url",
+    id("api-url"),
   ) as HTMLInputElement;
   const apiTokenElement = document.getElementById(
-    "zotero-prefpane-zotero2eagle-api-token",
+    id("api-token"),
   ) as HTMLInputElement;
   const outputDirElement = document.getElementById(
-    "zotero-prefpane-zotero2eagle-output-dir",
+    id("output-dir"),
   ) as HTMLInputElement;
 
   if (apiUrlElement) {
@@ -58,38 +63,32 @@ function bindPrefEvents() {
   const document = addon.data.prefs.window.document;
 
   // Bind Eagle API URL changes
-  const apiUrlElement = document.getElementById(
-    "zotero-prefpane-zotero2eagle-api-url",
-  );
+  const apiUrlElement = document.getElementById(id("api-url"));
   apiUrlElement?.addEventListener("input", (e: Event) => {
     const value = (e.target as HTMLInputElement).value;
     setPref("eagleApiUrl", value);
   });
 
   // Bind Eagle API Token changes
-  const apiTokenElement = document.getElementById(
-    "zotero-prefpane-zotero2eagle-api-token",
-  );
+  const apiTokenElement = document.getElementById(id("api-token"));
   apiTokenElement?.addEventListener("input", (e: Event) => {
     const value = (e.target as HTMLInputElement).value;
     setPref("eagleApiToken", value);
   });
 
   // Bind Output Directory changes
-  const outputDirElement = document.getElementById(
-    "zotero-prefpane-zotero2eagle-output-dir",
-  );
+  const outputDirElement = document.getElementById(id("output-dir"));
   outputDirElement?.addEventListener("input", (e: Event) => {
     const value = (e.target as HTMLInputElement).value;
     setPref("outputDirectory", value);
   });
 
   // Bind Test Connection button (support both XUL "command" and "click")
-  const testButton = document.getElementById("zotero2eagle-test-connection") as
+  const testButton = document.getElementById(btn("test-connection")) as
     | (HTMLElement & { label?: string })
     | null;
   const statusElement = document.getElementById(
-    "zotero2eagle-connection-status",
+    btn("connection-status"),
   ) as HTMLElement | null;
 
   const setButtonLabel = (btn: any, text: string) => {
@@ -131,18 +130,14 @@ function bindPrefEvents() {
     try {
       const apiUrl =
         (
-          document.getElementById(
-            "zotero-prefpane-zotero2eagle-api-url",
-          ) as HTMLInputElement
+          document.getElementById(id("api-url")) as HTMLInputElement
         )?.value?.trim() ||
         (getPref("eagleApiUrl") as string) ||
         "http://localhost:41595";
 
       const apiToken =
         (
-          document.getElementById(
-            "zotero-prefpane-zotero2eagle-api-token",
-          ) as HTMLInputElement
+          document.getElementById(id("api-token")) as HTMLInputElement
         )?.value?.trim() ||
         (getPref("eagleApiToken") as string) ||
         "";

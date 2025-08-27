@@ -65,27 +65,33 @@ export class FileLogger {
         const logEntry = `[${timestamp}] [${level}] [${module}] ${message}\n`;
 
         try {
-          // Append to existing file by reading current content first
-          let existingContent = "";
-          try {
-            const fileExists = await Zotero.File.pathToFile(
-              this.logFilePath,
-            ).exists();
-            if (fileExists) {
-              existingContent = (await Zotero.File.getContentsAsync(
-                this.logFilePath,
-              )) as string;
+          // Append without reading the entire file
+          const file = Zotero.File.pathToFile(this.logFilePath);
+          if (!file.exists()) {
+            // Ensure parent exists
+            const parent = file.parent;
+            if (parent && !parent.exists()) {
+              parent.create(
+                (Components.interfaces as any).nsIFile.DIRECTORY_TYPE || 1,
+                0o755,
+              );
             }
-          } catch (e) {
-            // File doesn't exist or can't be read, start with empty content
+            file.create(0, 0o644);
           }
-          await Zotero.File.putContentsAsync(
-            this.logFilePath,
-            existingContent + logEntry,
-          );
+
+          const fos = (Components as any).classes[
+            "@mozilla.org/network/file-output-stream;1"
+          ].createInstance((Components as any).interfaces.nsIFileOutputStream);
+          // Flags: write (0x02) | create (0x08) | append (0x10)
+          fos.init(file, 0x02 | 0x08 | 0x10, 0o644, 0);
+          try {
+            fos.write(logEntry, logEntry.length);
+          } finally {
+            fos.close();
+          }
         } catch (fileError) {
-          // If file logging fails, at least log to console
-          console.warn("Failed to write to log file:", fileError);
+          // Fallback: best‑effort write via putContentsAsync (overwrites), so skip to avoid data loss
+          console.warn("File append failed:", fileError);
         }
       }
     } catch (error) {

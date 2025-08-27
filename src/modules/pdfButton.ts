@@ -101,9 +101,7 @@ class PDFButton {
       ".toolbar-button[title='Select Area']",
       "button[id*='select-area']",
       "button[class*='select-area']",
-      // Generic fallback selectors
-      "button:has([data-l10n-id*='select-area'])",
-      "button:has([aria-label*='Select Area'])",
+      // Avoid :has(...) selectors for Gecko ESR compatibility
     ];
 
     const maxRetries = 10;
