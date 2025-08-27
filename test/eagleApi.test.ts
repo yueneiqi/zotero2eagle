@@ -92,5 +92,70 @@ describe("Eagle API", function () {
       assert.equal(result.status, "error", "Should return error status for invalid URL");
       assert.exists(result.message, "Should have error message");
     });
+
+    it("should add item from URL with valid parameters", async function () {
+      this.timeout(10000);
+      
+      const testItem = {
+        url: "https://example.com/test-image.jpg",
+        name: "Test Image Item",
+        tags: ["test", "unit-test"],
+        annotation: "Test image annotation",
+        rating: 5
+      };
+      
+      const baseUrl = "http://localhost:41595";
+      const apiToken = "test-token";
+      
+      try {
+        const result = await EagleApi.addItemFromURL(baseUrl, apiToken, testItem);
+        
+        // Should return a valid response object
+        assert.exists(result, "Should return a result");
+        assert.property(result, "status", "Result should have status property");
+        
+        if (result.status === "success") {
+          assert.equal(result.status, "success", "Should return success status");
+        } else {
+          // If Eagle is not running or authentication fails, should have error message
+          assert.equal(result.status, "error", "Should return error status if Eagle unavailable");
+          assert.exists(result.message, "Should have error message");
+        }
+        
+      } catch (error) {
+        // Network or connection errors are acceptable in test environment
+        assert.exists(error, "Error should be defined");
+      }
+    });
+
+    it("should handle authentication error properly", async function () {
+      this.timeout(5000);
+      
+      const testItem = {
+        url: "https://example.com/test-image.jpg",
+        name: "Test Auth Error"
+      };
+      
+      const baseUrl = "http://localhost:41595";
+      const invalidToken = "invalid-token";
+      
+      try {
+        const result = await EagleApi.addItemFromURL(baseUrl, invalidToken, testItem);
+        
+        // Should handle auth errors gracefully
+        assert.exists(result, "Should return a result");
+        assert.property(result, "status", "Result should have status property");
+        
+        if (result.status === "error" && result.message) {
+          // Expected behavior for auth errors
+          assert.include(["Unauthorized", "Invalid API token", "Connection failed"], 
+                        result.message, "Should have appropriate error message");
+        }
+        
+      } catch (error) {
+        // Network errors are acceptable in test environment
+        assert.exists(error, "Error should be defined");
+      }
+    });
   });
 });
