@@ -571,7 +571,6 @@ export class ImageSaver {
 
       const response: EagleApiResponse = await EagleApi.addItemFromPath(
         eagleItem,
-        apiUrl,
         apiToken,
       );
 

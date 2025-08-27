@@ -142,7 +142,7 @@ function bindPrefEvents() {
         (getPref("eagleApiToken") as string) ||
         "";
 
-      const result = await testEagleConnection(apiUrl, apiToken);
+      const result = await testEagleConnection(apiToken);
 
       if (statusElement) {
         if (result.success) {
