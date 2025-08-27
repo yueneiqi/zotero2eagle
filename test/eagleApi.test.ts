@@ -125,8 +125,6 @@ describe("Eagle API", function () {
     });
 
     it.skip("should add item from path with valid parameters", async function () {
-      this.timeout(0);
-      
       const testItem = {
         path: "/Users/seven/test.png",
         name: "Test Path Item",
@@ -160,9 +158,8 @@ describe("Eagle API", function () {
       }
     });
 
-    // timeout too long
-    it.skip("should handle authentication error in addItemFromPath", async function () {
-      this.timeout(0);
+    it("should handle authentication error in addItemFromPath", async function () {
+      this.timeout(1000);
       const testItem = {
         path: "/valid/path/to/file.jpg",
         name: "Test Auth Error Path"
@@ -171,7 +168,7 @@ describe("Eagle API", function () {
       const baseUrl = "http://localhost:41595";
       const invalidToken = "invalid-token";
       
-      const result = await EagleApi.addItemFromPath(baseUrl, invalidToken, testItem);
+      const result = await EagleApi.addItemFromPath(baseUrl, invalidToken, testItem, 300);
       assert.equal(result.status, "error", "Should return error status for invalid token");
       assert.include(result.message, "Request timed out", "Should have appropriate error message");
     });
@@ -179,7 +176,6 @@ describe("Eagle API", function () {
 
   describe("testEagleConnection", function () {
     it.skip("should handle connection with valid parameters", async function () {
-      this.timeout(0);
       
       const baseUrl = "http://localhost:41595";
       const apiToken = "valid-token";
@@ -192,12 +188,12 @@ describe("Eagle API", function () {
     });
 
     it("should handle unreachable Eagle API", async function () {
-      this.timeout(3000);
+      this.timeout(1000);
       
       const baseUrl = "http://unreachable-host:41595";
       const apiToken = "test-token";
       
-      const result = await testEagleConnection(baseUrl, apiToken, 1000);
+      const result = await testEagleConnection(baseUrl, apiToken, 100);
       
       assert.exists(result, "Should return a result");
       assert.property(result, "success", "Result should have success property");

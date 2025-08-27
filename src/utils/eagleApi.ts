@@ -136,12 +136,12 @@ export class EagleApi {
     }
   }
 
-  static async isEagleRunning(): Promise<boolean> {
+  static async isEagleRunning(timeoutMs?: number): Promise<boolean> {
     try {
       const rawUrl = (getPref("eagleApiUrl") as string) || "http://localhost:41595";
       const baseUrl = await this.buildEagleBaseUrl(rawUrl);
       await Zotero.HTTP.request('GET', `${baseUrl}/api/application/info`, { 
-        timeout: 1500 
+        timeout: timeoutMs || 1500 
       });
       return true;
     } catch (error: any) {
@@ -157,15 +157,17 @@ export class EagleApi {
     baseUrl: string,
     apiToken: string,
     item: EagleItemFromURL,
+    timeoutMs?: number,
   ): Promise<EagleApiResponse> {
     try {
-      if (!(await this.isEagleRunning())) {
+      if (!(await this.isEagleRunning(timeoutMs))) {
         throw new Error("Eagle application is not running");
       }
 
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromURL", {
         method: "POST",
-        body: item
+        body: item,
+        timeout: timeoutMs
       }, apiToken);
 
       if (response.status !== "success") {
@@ -189,15 +191,17 @@ export class EagleApi {
     baseUrl: string,
     apiToken: string,
     item: EagleItemFromPath,
+    timeoutMs?: number,
   ): Promise<EagleApiResponse> {
     try {
-      if (!(await this.isEagleRunning())) {
+      if (!(await this.isEagleRunning(timeoutMs))) {
         throw new Error("Eagle application is not running");
       }
 
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromPath", {
         method: "POST",
-        body: item
+        body: item,
+        timeout: timeoutMs
       }, apiToken);
 
       if (response.status !== "success") {
@@ -221,15 +225,17 @@ export class EagleApi {
     baseUrl: string,
     apiToken: string,
     items: EagleItemFromURL[],
+    timeoutMs?: number,
   ): Promise<EagleApiResponse> {
     try {
-      if (!(await this.isEagleRunning())) {
+      if (!(await this.isEagleRunning(timeoutMs))) {
         throw new Error("Eagle application is not running");
       }
 
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromURLs", {
         method: "POST",
-        body: { items }
+        body: { items },
+        timeout: timeoutMs
       }, apiToken);
 
       if (response.status !== "success") {
@@ -253,15 +259,17 @@ export class EagleApi {
     baseUrl: string,
     apiToken: string,
     items: EagleItemFromPath[],
+    timeoutMs?: number,
   ): Promise<EagleApiResponse> {
     try {
-      if (!(await this.isEagleRunning())) {
+      if (!(await this.isEagleRunning(timeoutMs))) {
         throw new Error("Eagle application is not running");
       }
 
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromPaths", {
         method: "POST",
-        body: { items }
+        body: { items },
+        timeout: timeoutMs
       }, apiToken);
 
       if (response.status !== "success") {
