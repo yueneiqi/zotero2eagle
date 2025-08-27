@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { EagleApi } from "../src/utils/eagleApi";
-import { setPref, clearPref } from "../src/utils/prefs";
+import { setPref } from "../src/utils/prefs";
 
 describe("Eagle API", function () {
   describe("Static methods", function () {
@@ -31,15 +31,24 @@ describe("Eagle API", function () {
   });
 
   describe("URL building", function () {
-    afterEach(function () {
-      // Clean up preferences after each test
-      clearPref("eagleApiUrl");
-    });
 
     it("should use custom API URL from preferences", async function () {
       setPref("eagleApiUrl", "http://custom.host:8080");
       const baseUrl = await (EagleApi as any).buildEagleBaseUrl();
       assert.equal(baseUrl, "http://custom.host:8080");
+    });
+
+    it("should handle localhost in custom URL with pickEagleHost", async function () {
+      setPref("eagleApiUrl", "http://localhost:8080");
+      // Mock pickEagleHost to return a specific host
+      const originalPickEagleHost = (EagleApi as any).pickEagleHost;
+      (EagleApi as any).pickEagleHost = async () => "127.0.0.1";
+      
+      const baseUrl = await (EagleApi as any).buildEagleBaseUrl();
+      assert.equal(baseUrl, "http://127.0.0.1:8080");
+      
+      // Restore original method
+      (EagleApi as any).pickEagleHost = originalPickEagleHost;
     });
 
     it("should handle invalid URL gracefully", async function () {
