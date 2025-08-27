@@ -1,5 +1,6 @@
 // Preferences script for Zotero2Eagle
 import { getPref, setPref } from "../utils/prefs";
+import { testEagleConnection } from "../utils/eagleApi";
 
 export async function registerPrefsScripts(_window: Window) {
   // This function is called when the prefs window is opened
@@ -83,20 +84,49 @@ function bindPrefEvents() {
     setPref("outputDirectory", value);
   });
 
-  // Bind Test Connection button
-  const testButton = document.getElementById("zotero2eagle-test-connection");
+  // Bind Test Connection button (support both XUL "command" and "click")
+  const testButton = document.getElementById("zotero2eagle-test-connection") as
+    | (HTMLElement & { label?: string })
+    | null;
   const statusElement = document.getElementById(
     "zotero2eagle-connection-status",
-  );
+  ) as HTMLElement | null;
 
-  testButton?.addEventListener("command", async (e: Event) => {
-    if (!statusElement) return;
+  const setButtonLabel = (btn: any, text: string) => {
+    // XUL <button> uses "label" attribute/property; HTML button uses textContent
+    try {
+      if (btn?.setAttribute) btn.setAttribute("label", text);
+      if (typeof btn?.label !== "undefined") btn.label = text;
+      if (typeof btn?.textContent !== "undefined") btn.textContent = text;
+    } catch (err) {
+      // Non-fatal: label update may differ between XUL/HTML buttons
+    }
+  };
 
-    const button = e.target as any;
+  const handleTestConnection = async (e?: Event) => {
+    if (!testButton) return;
+    // Prefer the button element we looked up, not e.target
+    const button = testButton as any;
+    if (button.disabled) return; // guard against duplicate events (click + command)
+    const originalLabel =
+      (button.getAttribute?.("label") as string) ||
+      (button.label as string) ||
+      (button.textContent as string) ||
+      "Test Connection";
+
+    if (!statusElement) {
+      // Still disable briefly to provide click feedback
+      button.disabled = true;
+      setButtonLabel(button, "Testing...");
+    }
+
+    // UI: disable and clear status
     button.disabled = true;
-    button.label = "Testing...";
-    statusElement.textContent = "";
-    (statusElement as HTMLElement).style.color = "";
+    setButtonLabel(button, "Testing...");
+    if (statusElement) {
+      statusElement.textContent = "";
+      statusElement.style.color = "";
+    }
 
     try {
       const apiUrl =
@@ -104,95 +134,44 @@ function bindPrefEvents() {
           document.getElementById(
             "zotero-prefpane-zotero2eagle-api-url",
           ) as HTMLInputElement
-        )?.value ||
+        )?.value?.trim() ||
         (getPref("eagleApiUrl") as string) ||
         "http://localhost:41595";
+
       const apiToken =
         (
           document.getElementById(
             "zotero-prefpane-zotero2eagle-api-token",
           ) as HTMLInputElement
-        )?.value ||
+        )?.value?.trim() ||
         (getPref("eagleApiToken") as string) ||
         "";
 
       const result = await testEagleConnection(apiUrl, apiToken);
 
-      if (result.success) {
-        statusElement.textContent = "✓ Connection successful!";
-        (statusElement as HTMLElement).style.color = "#28a745";
-      } else {
-        statusElement.textContent = `✗ ${result.error}`;
-        (statusElement as HTMLElement).style.color = "#dc3545";
+      if (statusElement) {
+        if (result.success) {
+          statusElement.textContent = "✓ Connection successful!";
+          statusElement.style.color = "#28a745";
+        } else {
+          statusElement.textContent = `✗ ${result.error}`;
+          statusElement.style.color = "#dc3545";
+        }
       }
     } catch (error: any) {
-      statusElement.textContent = `✗ ${error.message || "Connection failed"}`;
-      (statusElement as HTMLElement).style.color = "#dc3545";
-    } finally {
-      button.disabled = false;
-      button.label = "Test Connection";
-    }
-  });
-}
-
-/**
- * Test Eagle API connection
- */
-async function testEagleConnection(
-  apiUrl: string,
-  apiToken: string,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (!apiUrl) {
-      return { success: false, error: "API URL is required" };
-    }
-
-    if (!apiToken) {
-      return { success: false, error: "API token is required" };
-    }
-
-    // Test connection with Eagle API
-    const response = await fetch(`${apiUrl}/api/application/info`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        return { success: false, error: "Invalid API token" };
-      } else if (response.status === 404) {
-        return {
-          success: false,
-          error: "Eagle API not found. Is Eagle running?",
-        };
-      } else {
-        return {
-          success: false,
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        };
+      if (statusElement) {
+        statusElement.textContent = `✗ ${error?.message || "Connection failed"}`;
+        statusElement.style.color = "#dc3545";
       }
+    } finally {
+      setButtonLabel(button, originalLabel);
+      button.disabled = false;
     }
+  };
 
-    const data = await response.json();
-
-    if ((data as any).status === "success") {
-      return { success: true };
-    } else {
-      return {
-        success: false,
-        error: (data as any).message || "Unknown API error",
-      };
-    }
-  } catch (error: any) {
-    if (error.name === "TypeError" && error.message.includes("fetch")) {
-      return {
-        success: false,
-        error: "Cannot connect to Eagle. Is it running?",
-      };
-    }
-    return { success: false, error: error.message || "Connection failed" };
+  if (testButton) {
+    // XUL buttons fire "command"; in some contexts only "click" fires — wire both.
+    testButton.addEventListener("command", handleTestConnection);
+    testButton.addEventListener("click", handleTestConnection);
   }
 }

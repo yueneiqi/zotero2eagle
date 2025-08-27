@@ -564,8 +564,16 @@ export class ImageSaver {
       };
 
       // Save to Eagle
-      const response: EagleApiResponse =
-        await EagleApi.addItemFromPath(eagleItem);
+      const apiUrl = (
+        (getPref("eagleApiUrl") as string) || "http://localhost:41595"
+      ).trim();
+      const apiToken = ((getPref("eagleApiToken") as string) || "").trim();
+
+      const response: EagleApiResponse = await EagleApi.addItemFromPath(
+        eagleItem,
+        apiUrl,
+        apiToken,
+      );
 
       if (response.status === "success") {
         await this.log("Successfully saved image to Eagle from cache");

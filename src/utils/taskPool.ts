@@ -15,10 +15,10 @@ export default class TaskPool {
           attempt++;
           if (attempt > retries) {
             try {
-            await FileLogger.log("ERROR", "TaskPool", String(e));
-          } catch {
-            /* ignore logging errors */
-          }
+              await FileLogger.log("ERROR", "TaskPool", String(e));
+            } catch {
+              /* ignore logging errors */
+            }
             throw e;
           }
         }
