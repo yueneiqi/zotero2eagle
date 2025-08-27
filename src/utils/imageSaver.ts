@@ -564,14 +564,13 @@ export class ImageSaver {
       };
 
       // Save to Eagle
-      const apiUrl = (
-        (getPref("eagleApiUrl") as string) || "http://localhost:41595"
-      ).trim();
+      const apiUrl = await EagleApi.buildEagleBaseUrl();
       const apiToken = ((getPref("eagleApiToken") as string) || "").trim();
 
       const response: EagleApiResponse = await EagleApi.addItemFromPath(
-        eagleItem,
+        apiUrl,
         apiToken,
+        eagleItem,
       );
 
       if (response.status === "success") {

@@ -60,33 +60,37 @@ export class EagleApi {
     throw new Error('Eagle API not reachable (IPv6/IPv4/localhost all failed)');
   }
 
-  private static async buildEagleUrl(path: string): Promise<string> {
-    // Check if custom Eagle API URL is set in preferences
-    const customApiUrl = getPref("eagleApiUrl");
+  static async buildEagleBaseUrl(): Promise<string> {
+    // Get base URL from preferences or use default
+    const customApiUrl = (getPref("eagleApiUrl") as string) || "";
     
-    if (customApiUrl && customApiUrl.trim()) {
+    if (customApiUrl.trim()) {
       // Use custom URL from preferences
-      const baseUrl = customApiUrl.endsWith('/') ? customApiUrl.slice(0, -1) : customApiUrl;
+      const cleanBaseUrl = customApiUrl.endsWith('/') ? customApiUrl.slice(0, -1) : customApiUrl;
       
       let urlObj: URL | null = null;
       try {
-        urlObj = new URL(baseUrl);
+        urlObj = new URL(cleanBaseUrl);
       } catch (e) {
         // If invalid URL, just skip localhost logic and let the rest handle it
         urlObj = null;
       }
-      // If the custom URL is localhost, try to pick the best host to ipv6/ipv4 issue
+      // If the custom URL is localhost, try to pick the best host to avoid ipv6/ipv4 issue
       if (urlObj && urlObj.hostname === 'localhost') {
         const host = await this.pickEagleHost();
-        return `http://${host}:${urlObj.port || this.EAGLE_PORT}${path}`;
+        return `http://${host}:${urlObj.port || this.EAGLE_PORT}`;
       }
+      return cleanBaseUrl;
     }
-    return `${customApiUrl}${path}`;
+    
+    // Fallback: pick a host and use default port
+    const host = await this.pickEagleHost();
+    return `http://${host}:${this.EAGLE_PORT}`;
   }
 
-  static async eagleRequest(path: string, init: any = {}): Promise<any> {
+  static async eagleRequest(baseUrl: string, path: string, init: any = {}): Promise<any> {
     try {
-      const url = await this.buildEagleUrl(path);
+      const url = `${baseUrl}${path}`;
     
       const res = await Zotero.HTTP.request(init.method || 'GET', url, {
         headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
@@ -115,8 +119,9 @@ export class EagleApi {
   }
 
   static async addItemFromURL(
+    baseUrl: string,
+    apiToken: string,
     item: EagleItemFromURL,
-    apiToken?: string,
   ): Promise<EagleApiResponse> {
     try {
       await this.log(`Adding item to Eagle: ${item.name}`);
@@ -125,8 +130,8 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
-      const response = await this.eagleRequest("/api/item/addFromURL", {
+      const headers = { Authorization: `Bearer ${apiToken}` };
+      const response = await this.eagleRequest(baseUrl, "/api/item/addFromURL", {
         method: "POST",
         body: item,
         headers
@@ -153,8 +158,9 @@ export class EagleApi {
   }
 
   static async addItemFromPath(
+    baseUrl: string,
+    apiToken: string,
     item: EagleItemFromPath,
-    apiToken?: string,
   ): Promise<EagleApiResponse> {
     try {
       await this.log(`Adding item from path to Eagle: ${item.name}`);
@@ -163,8 +169,8 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
-      const response = await this.eagleRequest("/api/item/addFromPath", {
+      const headers = { Authorization: `Bearer ${apiToken}` };
+      const response = await this.eagleRequest(baseUrl, "/api/item/addFromPath", {
         method: "POST",
         body: item,
         headers
@@ -193,8 +199,9 @@ export class EagleApi {
   }
 
   static async addItemsFromURLs(
+    baseUrl: string,
+    apiToken: string,
     items: EagleItemFromURL[],
-    apiToken?: string,
   ): Promise<EagleApiResponse> {
     try {
       await this.log(`Adding ${items.length} items to Eagle`);
@@ -203,8 +210,8 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
-      const response = await this.eagleRequest("/api/item/addFromURLs", {
+      const headers = { Authorization: `Bearer ${apiToken}` };
+      const response = await this.eagleRequest(baseUrl, "/api/item/addFromURLs", {
         method: "POST",
         body: { items },
         headers
@@ -231,8 +238,9 @@ export class EagleApi {
   }
 
   static async addItemsFromPaths(
+    baseUrl: string,
+    apiToken: string,
     items: EagleItemFromPath[],
-    apiToken?: string,
   ): Promise<EagleApiResponse> {
     try {
       await this.log(`Adding ${items.length} items from paths to Eagle`);
@@ -241,8 +249,8 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
-      const response = await this.eagleRequest("/api/item/addFromPaths", {
+      const headers = { Authorization: `Bearer ${apiToken}` };
+      const response = await this.eagleRequest(baseUrl, "/api/item/addFromPaths", {
         method: "POST",
         body: { items },
         headers
@@ -312,6 +320,7 @@ export class EagleApi {
  * Returns a success flag and optional error message. Includes a timeout.
  */
 export async function testEagleConnection(
+  baseUrl: string,
   apiToken: string,
   timeoutMs = 8000,
 ): Promise<{ success: boolean; error?: string }> {
@@ -319,7 +328,7 @@ export async function testEagleConnection(
     if (!apiToken) return { success: false, error: "API token is required" };
 
     const headers = { Authorization: `Bearer ${apiToken}` };
-    const response = await EagleApi.eagleRequest("/api/application/info", {
+    const response = await EagleApi.eagleRequest(baseUrl, "/api/application/info", {
       headers,
       timeout: timeoutMs
     });

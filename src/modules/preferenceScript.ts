@@ -1,6 +1,6 @@
 // Preferences script for Zotero2Eagle
 import { getPref, setPref } from "../utils/prefs";
-import { testEagleConnection } from "../utils/eagleApi";
+import { testEagleConnection, EagleApi } from "../utils/eagleApi";
 import { config } from "../../package.json";
 
 const REF = config.addonRef;
@@ -128,12 +128,7 @@ function bindPrefEvents() {
     }
 
     try {
-      const apiUrl =
-        (
-          document.getElementById(id("api-url")) as HTMLInputElement
-        )?.value?.trim() ||
-        (getPref("eagleApiUrl") as string) ||
-        "http://localhost:41595";
+      const apiUrl = await EagleApi.buildEagleBaseUrl();
 
       const apiToken =
         (
@@ -142,7 +137,7 @@ function bindPrefEvents() {
         (getPref("eagleApiToken") as string) ||
         "";
 
-      const result = await testEagleConnection(apiToken);
+      const result = await testEagleConnection(apiUrl, apiToken);
 
       if (statusElement) {
         if (result.success) {

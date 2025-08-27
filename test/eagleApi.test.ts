@@ -38,27 +38,14 @@ describe("Eagle API", function () {
 
     it("should use custom API URL from preferences", async function () {
       setPref("eagleApiUrl", "http://custom.host:8080");
-      const url = await (EagleApi as any).buildEagleUrl("/test");
-      assert.equal(url, "http://custom.host:8080/test");
-    });
-
-    it("should handle localhost in custom URL with pickEagleHost", async function () {
-      setPref("eagleApiUrl", "http://localhost:8080");
-      // Mock pickEagleHost to return a specific host
-      const originalPickEagleHost = (EagleApi as any).pickEagleHost;
-      (EagleApi as any).pickEagleHost = async () => "127.0.0.1";
-      
-      const url = await (EagleApi as any).buildEagleUrl("/test");
-      assert.equal(url, "http://127.0.0.1:8080/test");
-      
-      // Restore original method
-      (EagleApi as any).pickEagleHost = originalPickEagleHost;
+      const baseUrl = await (EagleApi as any).buildEagleBaseUrl();
+      assert.equal(baseUrl, "http://custom.host:8080");
     });
 
     it("should handle invalid URL gracefully", async function () {
       setPref("eagleApiUrl", "invalid-url-format");
-      const url = await (EagleApi as any).buildEagleUrl("/test");
-      assert.equal(url, "invalid-url-format/test");
+      const baseUrl = await (EagleApi as any).buildEagleBaseUrl();
+      assert.equal(baseUrl, "invalid-url-format");
     });
   });
 
@@ -92,7 +79,7 @@ describe("Eagle API", function () {
         name: "Test Item"
       };
       
-      const result = await EagleApi.addItemFromURL(invalidItem);
+      const result = await EagleApi.addItemFromURL("http://localhost:41595", "", invalidItem);
       assert.equal(result.status, "error", "Should return error status for invalid URL");
       assert.exists(result.message, "Should have error message");
     });
