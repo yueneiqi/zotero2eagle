@@ -10,56 +10,69 @@
   </label>
 
   <!-- Eagle API URL -->
-  <vbox class="z2e-field">
+  <hbox class="z2e-row">
     <html:label
+      class="z2e-label"
       for="zotero-prefpane-__addonRef__-api-url"
       data-l10n-id="pref-api-url"
     ></html:label>
-    <html:input
-      type="text"
-      id="zotero-prefpane-__addonRef__-api-url"
-      preference="eagleApiUrl"
-      placeholder="http://localhost:41595"
-    ></html:input>
-    <html:div data-l10n-id="pref-api-url-help"></html:div>
-  </vbox>
+    <vbox class="z2e-control">
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-api-url"
+        preference="eagleApiUrl"
+        placeholder="http://localhost:41595"
+      ></html:input>
+      <html:div class="z2e-help" data-l10n-id="pref-api-url-help"></html:div>
+    </vbox>
+  </hbox>
 
   <!-- Eagle API Token -->
-  <vbox class="z2e-field">
+  <hbox class="z2e-row">
     <html:label
+      class="z2e-label"
       for="zotero-prefpane-__addonRef__-api-token"
       data-l10n-id="pref-api-token"
     ></html:label>
-    <html:input
-      type="password"
-      id="zotero-prefpane-__addonRef__-api-token"
-      preference="eagleApiToken"
-      placeholder="Enter your Eagle API token"
-    ></html:input>
-    <html:div data-l10n-id="pref-api-token-help"></html:div>
-  </vbox>
+    <vbox class="z2e-control">
+      <html:input
+        type="password"
+        id="zotero-prefpane-__addonRef__-api-token"
+        preference="eagleApiToken"
+        placeholder="Enter your Eagle API token"
+      ></html:input>
+      <html:div class="z2e-help" data-l10n-id="pref-api-token-help"></html:div>
+    </vbox>
+  </hbox>
 
   <!-- Output Directory -->
-  <vbox class="z2e-field">
+  <hbox class="z2e-row">
     <html:label
+      class="z2e-label"
       for="zotero-prefpane-__addonRef__-output-dir"
       data-l10n-id="pref-output-dir"
     ></html:label>
-    <html:input
-      type="text"
-      id="zotero-prefpane-__addonRef__-output-dir"
-      preference="outputDirectory"
-      placeholder="Optional: Local backup directory"
-    ></html:input>
-    <html:div data-l10n-id="pref-output-dir-help"></html:div>
-  </vbox>
+    <vbox class="z2e-control">
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-output-dir"
+        preference="outputDirectory"
+        placeholder="Optional: Local backup directory"
+      ></html:input>
+      <html:div class="z2e-help" data-l10n-id="pref-output-dir-help"></html:div>
+    </vbox>
+  </hbox>
 
   <!-- Eagle Integration Settings -->
-  <vbox class="z2e-section">
+  <hbox class="z2e-section-header">
+    <spacer class="z2e-label-spacer"></spacer>
     <html:label data-l10n-id="pref-eagle-section"></html:label>
+  </hbox>
 
-    <!-- Enable Eagle Integration -->
-    <hbox class="z2e-offset">
+  <!-- Enable Eagle Integration -->
+  <hbox class="z2e-row">
+    <spacer class="z2e-label-spacer"></spacer>
+    <hbox class="z2e-checkbox">
       <html:input
         type="checkbox"
         id="zotero-prefpane-__addonRef__-enable-eagle"
@@ -70,31 +83,40 @@
         data-l10n-id="pref-enable-eagle"
       ></html:label>
     </hbox>
-    <html:div class="z2e-offset" data-l10n-id="pref-enable-eagle-help"></html:div>
+  </hbox>
+  <hbox class="z2e-row-tight">
+    <spacer class="z2e-label-spacer"></spacer>
+    <html:div class="z2e-help" data-l10n-id="pref-enable-eagle-help"></html:div>
+  </hbox>
 
-    <!-- Eagle Folder ID -->
-    <vbox class="z2e-field">
-      <html:label
-        for="zotero-prefpane-__addonRef__-eagle-folder"
-        data-l10n-id="pref-eagle-folder"
-      ></html:label>
+  <!-- Eagle Folder ID -->
+  <hbox class="z2e-row">
+    <html:label
+      class="z2e-label"
+      for="zotero-prefpane-__addonRef__-eagle-folder"
+      data-l10n-id="pref-eagle-folder"
+    ></html:label>
+    <vbox class="z2e-control">
       <html:input
         type="text"
         id="zotero-prefpane-__addonRef__-eagle-folder"
         preference="eagleFolderId"
         placeholder="Optional: Eagle folder ID"
       ></html:input>
-      <html:div data-l10n-id="pref-eagle-folder-help"></html:div>
+      <html:div class="z2e-help" data-l10n-id="pref-eagle-folder-help"></html:div>
     </vbox>
-  </vbox>
+  </hbox>
 
   <!-- Test Connection Button -->
-  <hbox class="z2e-actions z2e-offset">
-    <button
-      id="__addonRef__-test-connection"
-      data-l10n-id="pref-test-connection"
-    ></button>
-    <html:span id="__addonRef__-connection-status"></html:span>
+  <hbox class="z2e-row">
+    <spacer class="z2e-label-spacer"></spacer>
+    <hbox class="z2e-actions">
+      <button
+        id="__addonRef__-test-connection"
+        data-l10n-id="pref-test-connection"
+      ></button>
+      <html:span id="__addonRef__-connection-status"></html:span>
+    </hbox>
   </hbox>
 </groupbox>
 
@@ -118,63 +140,23 @@
     padding-bottom: 8px;
   }
 
-  /* Base spacing for blocks */
-  groupbox[onload*="__addonInstance__"] vbox { margin-bottom: 14px; }
+  /* Row layout using XUL boxes */
+  .z2e-row { margin: 10px 0; }
+  .z2e-row-tight { margin: 4px 0 10px; }
+  .z2e-label { width: 220px; text-align: end; padding: 6px 12px 0 0; font-weight: 500; color: #333; font-size: 14px; }
+  .z2e-label-spacer { width: 220px; }
+  .z2e-control { max-width: 520px; }
+  .z2e-help { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; font-style: italic; max-width: 520px; }
+
+  /* Inputs */
+  html|input[id*="__addonRef__"] { width: 420px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+  html|input[id*="__addonRef__"]:focus { outline: none; border-color: #0060df; box-shadow: 0 0 0 2px rgba(0, 96, 223, 0.1); }
 
   /* Section header */
-  .z2e-section > html|label[data-l10n-id*="pref-eagle-section"] {
-    display: block;
-    margin: 8px 0 12px 0;
-    font-weight: 600;
-    color: #222;
-  }
-
-  /* Two-column field grid */
-  vbox.z2e-field {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 6px 12px;
-    align-items: center;
-    max-width: 720px;
-  }
-  vbox.z2e-field > html|label[for*="__addonRef__"] {
-    grid-column: 1;
-    justify-self: end;
-    margin: 0;
-    font-weight: 500;
-    color: #333;
-    font-size: 14px;
-  }
-  vbox.z2e-field > html|input[id*="__addonRef__"] {
-    grid-column: 2;
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: border-color 0.2s ease;
-    box-sizing: border-box;
-    max-width: 420px;
-  }
-  vbox.z2e-field > html|input[id*="__addonRef__"]:focus {
-    outline: none;
-    border-color: #0060df;
-    box-shadow: 0 0 0 2px rgba(0, 96, 223, 0.1);
-  }
-  vbox.z2e-field > html|div[data-l10n-id*="-help"] {
-    grid-column: 2;
-    font-size: 12px;
-    color: #666;
-    line-height: 1.4;
-    font-style: italic;
-    max-width: 520px;
-  }
-
-  /* Indented rows aligned with second column */
-  .z2e-offset { margin-left: 200px; }
+  .z2e-section-header html|label { font-weight: 600; color: #222; margin: 8px 0 0; }
 
   /* Actions and buttons */
-  .z2e-actions { align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; }
+  .z2e-actions { align-items: center; margin-top: 6px; }
   button[id*="__addonRef__"] {
     padding: 8px 14px;
     background: #0060df;
@@ -213,10 +195,8 @@
   }
 
   /* Responsive */
-  @media (max-width: 600px) {
-    vbox.z2e-field { grid-template-columns: 1fr; }
-    .z2e-offset { margin-left: 0; }
-    vbox.z2e-field > html|label[for*="__addonRef__"] { justify-self: start; }
-    vbox.z2e-field > html|input[id*="__addonRef__"] { max-width: 100%; }
+  @media (max-width: 720px) {
+    .z2e-label, .z2e-label-spacer { width: 0; padding-right: 0; }
+    html|input[id*="__addonRef__"] { width: 100%; max-width: 100%; }
   }
   ]]></html:style>
