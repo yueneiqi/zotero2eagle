@@ -9,6 +9,12 @@
     <html:h2 data-l10n-id="pref-title"></html:h2>
   </label>
 
+  <!-- Eagle Integration Settings (grouped) -->
+  <hbox class="z2e-section-header">
+    <spacer class="z2e-label-spacer"></spacer>
+    <html:label data-l10n-id="pref-eagle-section"></html:label>
+  </hbox>
+
   <!-- Eagle API URL -->
   <hbox class="z2e-row">
     <html:label
@@ -43,30 +49,6 @@
       ></html:input>
       <html:div class="z2e-help" data-l10n-id="pref-api-token-help"></html:div>
     </vbox>
-  </hbox>
-
-  <!-- Output Directory -->
-  <hbox class="z2e-row">
-    <html:label
-      class="z2e-label"
-      for="zotero-prefpane-__addonRef__-output-dir"
-      data-l10n-id="pref-output-dir"
-    ></html:label>
-    <vbox class="z2e-control">
-      <html:input
-        type="text"
-        id="zotero-prefpane-__addonRef__-output-dir"
-        preference="outputDirectory"
-        placeholder="Optional: Local backup directory"
-      ></html:input>
-      <html:div class="z2e-help" data-l10n-id="pref-output-dir-help"></html:div>
-    </vbox>
-  </hbox>
-
-  <!-- Eagle Integration Settings -->
-  <hbox class="z2e-section-header">
-    <spacer class="z2e-label-spacer"></spacer>
-    <html:label data-l10n-id="pref-eagle-section"></html:label>
   </hbox>
 
   <!-- Enable Eagle Integration -->
@@ -118,6 +100,30 @@
       <html:span id="__addonRef__-connection-status"></html:span>
     </hbox>
   </hbox>
+
+  <!-- Local Backup Settings -->
+  <hbox class="z2e-section-header">
+    <spacer class="z2e-label-spacer"></spacer>
+    <html:label>Local Backup</html:label>
+  </hbox>
+
+  <!-- Output Directory -->
+  <hbox class="z2e-row">
+    <html:label
+      class="z2e-label"
+      for="zotero-prefpane-__addonRef__-output-dir"
+      data-l10n-id="pref-output-dir"
+    ></html:label>
+    <vbox class="z2e-control">
+      <html:input
+        type="text"
+        id="zotero-prefpane-__addonRef__-output-dir"
+        preference="outputDirectory"
+        placeholder="Optional: Local backup directory"
+      ></html:input>
+      <html:div class="z2e-help" data-l10n-id="pref-output-dir-help"></html:div>
+    </vbox>
+  </hbox>
 </groupbox>
 
 <vbox>
@@ -143,22 +149,25 @@
   /* Row layout using XUL boxes */
   .z2e-row { margin: 10px 0; }
   .z2e-row-tight { margin: 4px 0 10px; }
-  .z2e-label { width: 220px; text-align: end; padding: 6px 12px 0 0; font-weight: 500; color: #333; font-size: 14px; }
+  .z2e-label { width: 220px; text-align: end; padding: 6px 12px 0 0; font-weight: 500; font-size: 14px; }
   .z2e-label-spacer { width: 220px; }
   .z2e-control { max-width: 520px; }
-  .z2e-help { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; font-style: italic; max-width: 520px; }
+  .z2e-help { font-size: 12px; margin-top: 4px; line-height: 1.4; font-style: italic; max-width: 520px; opacity: .8; }
 
   /* Inputs */
-  html|input[id*="__addonRef__"] { width: 420px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
-  html|input[id*="__addonRef__"]:focus { outline: none; border-color: #0060df; box-shadow: 0 0 0 2px rgba(0, 96, 223, 0.1); }
+  html|input[id*="__addonRef__"] { width: 420px; padding: 6px 8px; font-size: 14px; box-sizing: border-box; }
+  html|input[id*="__addonRef__"]:focus { outline: none; }
 
   /* Section header */
-  .z2e-section-header html|label { font-weight: 600; color: #222; margin: 8px 0 0; }
+  .z2e-section-header html|label { font-weight: 600; margin: 8px 0 0; }
 
   /* Actions and buttons */
   .z2e-actions { align-items: center; margin-top: 6px; }
   button[id*="__addonRef__"] {
-    padding: 8px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
     background: #0060df;
     color: #fff !important;
     border: none;
@@ -168,12 +177,12 @@
     font-family: inherit;
     cursor: pointer;
     transition: background-color 0.2s ease;
-    line-height: 1.2;
+    line-height: 1;
     white-space: nowrap;
   }
   button[id*="__addonRef__"]:hover { background: #0054c2; }
   button[id*="__addonRef__"]:active { background: #003eaa; }
-  button[id*="__addonRef__"]:disabled { background: #ccc; cursor: not-allowed; }
+  button[id*="__addonRef__"]:disabled { opacity: .6; cursor: not-allowed; }
 
   /* Status text */
   html|span[id*="__addonRef__"][id*="connection-status"] {
