@@ -110,9 +110,16 @@ export class EagleApi {
 
   static async isEagleRunning(): Promise<boolean> {
     try {
-      await this.pickEagleHost();
+      const baseUrl = await this.buildEagleBaseUrl();
+      await Zotero.HTTP.request('GET', `${baseUrl}/api/application/info`, { 
+        timeout: 1500 
+      });
       return true;
     } catch (error: any) {
+      // Treat 401 Unauthorized as reachable (host is up but requires auth)
+      if (error && (error.status === 401 || error.code === 401)) {
+        return true;
+      }
       await this.log("Eagle application not running or not accessible", "WARN");
       return false;
     }
