@@ -39,6 +39,10 @@ export class EagleApi {
     await FileLogger.log(level, "EagleApi", msg);
   }
 
+  private static getEagleApiUrl(): string {
+    return ((getPref("eagleApiUrl") as string) || "http://localhost:41595").trim();
+  }
+
   private static async pickEagleHost(hosts: string[] = ['localhost', '[::1]', '127.0.0.1']): Promise<string> {
     if (this.EAGLE_HOST) return this.EAGLE_HOST;
     
@@ -60,9 +64,9 @@ export class EagleApi {
     throw new Error('Eagle API not reachable (IPv6/IPv4/localhost all failed)');
   }
 
-  static async buildEagleBaseUrl(rawUrl: string): Promise<string> {
-    // Get base URL from preferences or use default
-    const customApiUrl = rawUrl || "";
+  static async buildEagleBaseUrl(rawUrl?: string): Promise<string> {
+    // Get base URL from preferences or use provided URL or default
+    const customApiUrl = rawUrl || this.getEagleApiUrl();
     
     if (customApiUrl.trim()) {
       // Use custom URL from preferences
@@ -138,8 +142,7 @@ export class EagleApi {
 
   static async isEagleRunning(timeoutMs?: number): Promise<boolean> {
     try {
-      const rawUrl = (getPref("eagleApiUrl") as string) || "http://localhost:41595";
-      const baseUrl = await this.buildEagleBaseUrl(rawUrl);
+      const baseUrl = await this.buildEagleBaseUrl();
       await Zotero.HTTP.request('GET', `${baseUrl}/api/application/info`, { 
         timeout: timeoutMs || 1500 
       });
