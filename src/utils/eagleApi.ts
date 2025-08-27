@@ -60,9 +60,9 @@ export class EagleApi {
     throw new Error('Eagle API not reachable (IPv6/IPv4/localhost all failed)');
   }
 
-  static async buildEagleBaseUrl(): Promise<string> {
+  static async buildEagleBaseUrl(rawUrl: string): Promise<string> {
     // Get base URL from preferences or use default
-    const customApiUrl = (getPref("eagleApiUrl") as string) || "";
+    const customApiUrl = rawUrl || "";
     
     if (customApiUrl.trim()) {
       // Use custom URL from preferences
@@ -88,18 +88,46 @@ export class EagleApi {
     return `http://${host}:${this.EAGLE_PORT}`;
   }
 
-  static async eagleRequest(baseUrl: string, path: string, init: any = {}): Promise<any> {
+  static async eagleRequest(baseUrl: string, path: string, init: any = {}, apiToken?: string): Promise<any> {
     try {
-      const url = `${baseUrl}${path}`;
+      let url = `${baseUrl}${path}`;
+      let requestBody = init.body;
+      
+      // Include token in the request body for all request types if provided
+      if (apiToken) {
+        if (requestBody) {
+          // If body is already an object, add token to it
+          if (typeof requestBody === 'object' && requestBody !== null) {
+            requestBody = { ...requestBody, token: apiToken };
+          } else {
+            // If body is a string, try to parse it and add token
+            try {
+              const bodyObj = JSON.parse(requestBody);
+              requestBody = { ...bodyObj, token: apiToken };
+            } catch {
+              // If can't parse, fall back to query parameter
+              const separator = path.includes('?') ? '&' : '?';
+              url += `${separator}token=${encodeURIComponent(apiToken)}`;
+            }
+          }
+        } else {
+          // No existing body, create one with just the token
+          requestBody = { token: apiToken };
+        }
+      }
     
       const res = await Zotero.HTTP.request(init.method || 'GET', url, {
         headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-        body: init.body && (typeof init.body === 'string' ? init.body : JSON.stringify(init.body)),
+        body: requestBody && (typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody)),
         responseType: init.responseType || 'json',
         timeout: init.timeout || this.TIMEOUT,
       });
       return res.response;
     } catch (error: any) {
+      // Only log errors that aren't common auth/connection failures
+      if (!(error && (error.status === 401 || error.code === 401))) {
+        await this.log(`Request failed: ${error}`, "ERROR");
+      }
       // Normalize 401 into a structured response so callers can detect Eagle running but unauthorized
       if (error && (error.status === 401 || error.code === 401)) {
         return { status: 'error', code: 401, message: 'Unauthorized' };
@@ -110,7 +138,8 @@ export class EagleApi {
 
   static async isEagleRunning(): Promise<boolean> {
     try {
-      const baseUrl = await this.buildEagleBaseUrl();
+      const rawUrl = (getPref("eagleApiUrl") as string) || "http://localhost:41595";
+      const baseUrl = await this.buildEagleBaseUrl(rawUrl);
       await Zotero.HTTP.request('GET', `${baseUrl}/api/application/info`, { 
         timeout: 1500 
       });
@@ -120,7 +149,6 @@ export class EagleApi {
       if (error && (error.status === 401 || error.code === 401)) {
         return true;
       }
-      await this.log("Eagle application not running or not accessible", "WARN");
       return false;
     }
   }
@@ -131,32 +159,25 @@ export class EagleApi {
     item: EagleItemFromURL,
   ): Promise<EagleApiResponse> {
     try {
-      await this.log(`Adding item to Eagle: ${item.name}`);
-
       if (!(await this.isEagleRunning())) {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = { Authorization: `Bearer ${apiToken}` };
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromURL", {
         method: "POST",
-        body: item,
-        headers
-      });
+        body: item
+      }, apiToken);
 
-      if (response.status === "success") {
-        await this.log(`Successfully added item to Eagle: ${item.name}`);
-      } else {
+      if (response.status !== "success") {
         await this.log(
-          `Failed to add item to Eagle: ${response.message || "Unknown error"}`,
+          `Failed to add item "${item.name}": ${response.message || "Unknown error"}`,
           "ERROR",
         );
       }
 
       return response;
     } catch (error) {
-      const errorMsg = `Error adding item to Eagle: ${error}`;
-      await this.log(errorMsg, "ERROR");
+      await this.log(`Error adding item "${item.name}": ${error}`, "ERROR");
       return {
         status: "error",
         message: String(error),
@@ -170,34 +191,25 @@ export class EagleApi {
     item: EagleItemFromPath,
   ): Promise<EagleApiResponse> {
     try {
-      await this.log(`Adding item from path to Eagle: ${item.name}`);
-
       if (!(await this.isEagleRunning())) {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = { Authorization: `Bearer ${apiToken}` };
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromPath", {
         method: "POST",
-        body: item,
-        headers
-      });
+        body: item
+      }, apiToken);
 
-      if (response.status === "success") {
+      if (response.status !== "success") {
         await this.log(
-          `Successfully added item from path to Eagle: ${item.name}`,
-        );
-      } else {
-        await this.log(
-          `Failed to add item from path to Eagle: ${response.message || "Unknown error"}`,
+          `Failed to add item from path "${item.name}": ${response.message || "Unknown error"}`,
           "ERROR",
         );
       }
 
       return response;
     } catch (error) {
-      const errorMsg = `Error adding item from path to Eagle: ${error}`;
-      await this.log(errorMsg, "ERROR");
+      await this.log(`Error adding item from path "${item.name}": ${error}`, "ERROR");
       return {
         status: "error",
         message: String(error),
@@ -211,32 +223,25 @@ export class EagleApi {
     items: EagleItemFromURL[],
   ): Promise<EagleApiResponse> {
     try {
-      await this.log(`Adding ${items.length} items to Eagle`);
-
       if (!(await this.isEagleRunning())) {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = { Authorization: `Bearer ${apiToken}` };
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromURLs", {
         method: "POST",
-        body: { items },
-        headers
-      });
+        body: { items }
+      }, apiToken);
 
-      if (response.status === "success") {
-        await this.log(`Successfully added ${items.length} items to Eagle`);
-      } else {
+      if (response.status !== "success") {
         await this.log(
-          `Failed to add items to Eagle: ${response.message || "Unknown error"}`,
+          `Failed to add ${items.length} items: ${response.message || "Unknown error"}`,
           "ERROR",
         );
       }
 
       return response;
     } catch (error) {
-      const errorMsg = `Error adding items to Eagle: ${error}`;
-      await this.log(errorMsg, "ERROR");
+      await this.log(`Error adding ${items.length} items: ${error}`, "ERROR");
       return {
         status: "error",
         message: String(error),
@@ -250,34 +255,25 @@ export class EagleApi {
     items: EagleItemFromPath[],
   ): Promise<EagleApiResponse> {
     try {
-      await this.log(`Adding ${items.length} items from paths to Eagle`);
-
       if (!(await this.isEagleRunning())) {
         throw new Error("Eagle application is not running");
       }
 
-      const headers = { Authorization: `Bearer ${apiToken}` };
       const response = await this.eagleRequest(baseUrl, "/api/item/addFromPaths", {
         method: "POST",
-        body: { items },
-        headers
-      });
+        body: { items }
+      }, apiToken);
 
-      if (response.status === "success") {
+      if (response.status !== "success") {
         await this.log(
-          `Successfully added ${items.length} items from paths to Eagle`,
-        );
-      } else {
-        await this.log(
-          `Failed to add items from paths to Eagle: ${response.message || "Unknown error"}`,
+          `Failed to add ${items.length} items from paths: ${response.message || "Unknown error"}`,
           "ERROR",
         );
       }
 
       return response;
     } catch (error) {
-      const errorMsg = `Error adding items from paths to Eagle: ${error}`;
-      await this.log(errorMsg, "ERROR");
+      await this.log(`Error adding ${items.length} items from paths: ${error}`, "ERROR");
       return {
         status: "error",
         message: String(error),
@@ -334,11 +330,9 @@ export async function testEagleConnection(
   try {
     if (!apiToken) return { success: false, error: "API token is required" };
 
-    const headers = { Authorization: `Bearer ${apiToken}` };
     const response = await EagleApi.eagleRequest(baseUrl, "/api/application/info", {
-      headers,
       timeout: timeoutMs
-    });
+    }, apiToken);
 
     if (response?.status === "success") {
       return { success: true };

@@ -128,7 +128,14 @@ function bindPrefEvents() {
     }
 
     try {
-      const apiUrl = await EagleApi.buildEagleBaseUrl();
+      const inputApiUrl =
+        (
+          document.getElementById(id("api-url")) as HTMLInputElement
+        )?.value?.trim() ||
+        (getPref("eagleApiUrl") as string) ||
+        "http://localhost:41595";
+
+      const apiUrl = await EagleApi.buildEagleBaseUrl(inputApiUrl);
 
       const apiToken =
         (
