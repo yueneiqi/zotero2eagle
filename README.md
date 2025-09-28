@@ -6,6 +6,10 @@ A Zotero plugin that seamlessly integrates with [Eagle](https://eagle.cool/), al
 
 [English](README.md) | [简体中文](doc/README-zhCN.md)
 
+## Compatibility
+
+This add-on has only been tested on macOS 13.7.8 so far; other operating systems may require additional validation.
+
 ## Features
 
 - **One-click save**: Extract image annotations from PDFs and save them directly to Eagle
