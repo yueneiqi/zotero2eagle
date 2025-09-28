@@ -10,6 +10,10 @@ A Zotero plugin that seamlessly integrates with [Eagle](https://eagle.cool/), al
 
 This add-on has only been tested on macOS 13.7.8 so far; other operating systems may require additional validation.
 
+## Disclaimer
+
+This project is made by Vibe Coding and provided as-is; use it at your own risk.
+
 ## Features
 
 - **One-click save**: Extract image annotations from PDFs and save them directly to Eagle
