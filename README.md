@@ -39,6 +39,7 @@ This project is made by Vibe Coding and provided as-is; use it at your own risk.
    - **API URL**: Default `http://localhost:41595` (Eagle's default port)
    - **API Token**: Your Eagle API token (required for authentication)
 3. Click "Test Connection" to verify the setup
+   - **Known issue**: The `Test Connection` button may fail to show a successful status even when Eagle connectivity is working; try saving an annotation to confirm instead.
 
 ### Output Directory (Optional)
 

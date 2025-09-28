@@ -27,6 +27,7 @@
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit prefixes (`feat:`, `fix:`, `docs:`) as seen in history (`docs: rewrite Chinese README`).
 - Squash work-in-progress commits before opening a PR; ensure history stays readable.
+- When editing `README.md`, mirror the change in `doc/README-zhCN.md` unless the update is language-specific.
 - PRs should include: brief summary, linked issues, screenshots/GIFs for UI changes, and notes on macOS-only validation.
 - Re-run lint, build, and tests before requesting review; attach output snippets if failures occur.
 
