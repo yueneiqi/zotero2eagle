@@ -54,6 +54,7 @@ Configure a local backup directory for image files:
 2. Create image annotations (highlight and extract image regions)
 3. Images are automatically processed and saved to Eagle
 4. Optional: Also saved locally if output directory is configured
+5. After the Eagle import completes, click the image URL backlink to jump back to the Zotero PDF
 
 ## Documentation
 
