@@ -12,7 +12,7 @@ This add-on has only been tested on macOS 13.7.8 so far; other operating systems
 
 ## Disclaimer
 
-This project is made by Vibe Coding and provided as-is; use it at your own risk.
+> **⚠️ Disclaimer**: This project is made by Vibe Coding and provided as-is; use it at your own risk.
 
 ## Features
 
