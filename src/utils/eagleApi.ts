@@ -40,17 +40,25 @@ export class EagleApi {
   }
 
   private static getEagleApiUrl(): string {
-    return ((getPref("eagleApiUrl") as string) || "http://localhost:41595").trim();
+    return (
+      (getPref("eagleApiUrl") as string) || "http://localhost:41595"
+    ).trim();
   }
 
-  private static async pickEagleHost(hosts: string[] = ['localhost', '[::1]', '127.0.0.1']): Promise<string> {
+  private static async pickEagleHost(
+    hosts: string[] = ["localhost", "[::1]", "127.0.0.1"],
+  ): Promise<string> {
     if (this.EAGLE_HOST) return this.EAGLE_HOST;
-    
+
     for (const host of hosts) {
       try {
-        await Zotero.HTTP.request('GET', `http://${host}:${this.EAGLE_PORT}/api/application/info`, { 
-          timeout: 1500 
-        });
+        await Zotero.HTTP.request(
+          "GET",
+          `http://${host}:${this.EAGLE_PORT}/api/application/info`,
+          {
+            timeout: 1500,
+          },
+        );
         this.EAGLE_HOST = host;
         return host;
       } catch (error: any) {
@@ -61,17 +69,19 @@ export class EagleApi {
         }
       }
     }
-    throw new Error('Eagle API not reachable (IPv6/IPv4/localhost all failed)');
+    throw new Error("Eagle API not reachable (IPv6/IPv4/localhost all failed)");
   }
 
   static async buildEagleBaseUrl(rawUrl?: string): Promise<string> {
     // Get base URL from preferences or use provided URL or default
     const customApiUrl = rawUrl || this.getEagleApiUrl();
-    
+
     if (customApiUrl.trim()) {
       // Use custom URL from preferences
-      const cleanBaseUrl = customApiUrl.endsWith('/') ? customApiUrl.slice(0, -1) : customApiUrl;
-      
+      const cleanBaseUrl = customApiUrl.endsWith("/")
+        ? customApiUrl.slice(0, -1)
+        : customApiUrl;
+
       let urlObj: URL | null = null;
       try {
         urlObj = new URL(cleanBaseUrl);
@@ -80,28 +90,33 @@ export class EagleApi {
         urlObj = null;
       }
       // If the custom URL is localhost, try to pick the best host to avoid ipv6/ipv4 issue
-      if (urlObj && urlObj.hostname === 'localhost') {
+      if (urlObj && urlObj.hostname === "localhost") {
         const host = await this.pickEagleHost();
         return `http://${host}:${urlObj.port || this.EAGLE_PORT}`;
       }
       return cleanBaseUrl;
     }
-    
+
     // Fallback: pick a host and use default port
     const host = await this.pickEagleHost();
     return `http://${host}:${this.EAGLE_PORT}`;
   }
 
-  static async eagleRequest(baseUrl: string, path: string, init: any = {}, apiToken?: string): Promise<any> {
+  static async eagleRequest(
+    baseUrl: string,
+    path: string,
+    init: any = {},
+    apiToken?: string,
+  ): Promise<any> {
     try {
       let url = `${baseUrl}${path}`;
       let requestBody = init.body;
-      
+
       // Include token in the request body for all request types if provided
       if (apiToken) {
         if (requestBody) {
           // If body is already an object, add token to it
-          if (typeof requestBody === 'object' && requestBody !== null) {
+          if (typeof requestBody === "object" && requestBody !== null) {
             requestBody = { ...requestBody, token: apiToken };
           } else {
             // If body is a string, try to parse it and add token
@@ -110,7 +125,7 @@ export class EagleApi {
               requestBody = { ...bodyObj, token: apiToken };
             } catch {
               // If can't parse, fall back to query parameter
-              const separator = path.includes('?') ? '&' : '?';
+              const separator = path.includes("?") ? "&" : "?";
               url += `${separator}token=${encodeURIComponent(apiToken)}`;
             }
           }
@@ -119,11 +134,18 @@ export class EagleApi {
           requestBody = { token: apiToken };
         }
       }
-    
-      const res = await Zotero.HTTP.request(init.method || 'GET', url, {
-        headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-        body: requestBody && (typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody)),
-        responseType: init.responseType || 'json',
+
+      const res = await Zotero.HTTP.request(init.method || "GET", url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(init.headers || {}),
+        },
+        body:
+          requestBody &&
+          (typeof requestBody === "string"
+            ? requestBody
+            : JSON.stringify(requestBody)),
+        responseType: init.responseType || "json",
         timeout: init.timeout || this.TIMEOUT,
       });
       return res.response;
@@ -134,7 +156,7 @@ export class EagleApi {
       }
       // Normalize 401 into a structured response so callers can detect Eagle running but unauthorized
       if (error && (error.status === 401 || error.code === 401)) {
-        return { status: 'error', code: 401, message: 'Unauthorized' };
+        return { status: "error", code: 401, message: "Unauthorized" };
       }
       throw error;
     }
@@ -143,8 +165,8 @@ export class EagleApi {
   static async isEagleRunning(timeoutMs?: number): Promise<boolean> {
     try {
       const baseUrl = await this.buildEagleBaseUrl();
-      await Zotero.HTTP.request('GET', `${baseUrl}/api/application/info`, { 
-        timeout: timeoutMs || 1500 
+      await Zotero.HTTP.request("GET", `${baseUrl}/api/application/info`, {
+        timeout: timeoutMs || 1500,
       });
       return true;
     } catch (error: any) {
@@ -167,11 +189,16 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const response = await this.eagleRequest(baseUrl, "/api/item/addFromURL", {
-        method: "POST",
-        body: item,
-        timeout: timeoutMs
-      }, apiToken);
+      const response = await this.eagleRequest(
+        baseUrl,
+        "/api/item/addFromURL",
+        {
+          method: "POST",
+          body: item,
+          timeout: timeoutMs,
+        },
+        apiToken,
+      );
 
       if (response.status !== "success") {
         await this.log(
@@ -201,11 +228,16 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const response = await this.eagleRequest(baseUrl, "/api/item/addFromPath", {
-        method: "POST",
-        body: item,
-        timeout: timeoutMs
-      }, apiToken);
+      const response = await this.eagleRequest(
+        baseUrl,
+        "/api/item/addFromPath",
+        {
+          method: "POST",
+          body: item,
+          timeout: timeoutMs,
+        },
+        apiToken,
+      );
 
       if (response.status !== "success") {
         await this.log(
@@ -216,7 +248,10 @@ export class EagleApi {
 
       return response;
     } catch (error) {
-      await this.log(`Error adding item from path "${item.name}": ${error}`, "ERROR");
+      await this.log(
+        `Error adding item from path "${item.name}": ${error}`,
+        "ERROR",
+      );
       return {
         status: "error",
         message: String(error),
@@ -235,11 +270,16 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const response = await this.eagleRequest(baseUrl, "/api/item/addFromURLs", {
-        method: "POST",
-        body: { items },
-        timeout: timeoutMs
-      }, apiToken);
+      const response = await this.eagleRequest(
+        baseUrl,
+        "/api/item/addFromURLs",
+        {
+          method: "POST",
+          body: { items },
+          timeout: timeoutMs,
+        },
+        apiToken,
+      );
 
       if (response.status !== "success") {
         await this.log(
@@ -269,11 +309,16 @@ export class EagleApi {
         throw new Error("Eagle application is not running");
       }
 
-      const response = await this.eagleRequest(baseUrl, "/api/item/addFromPaths", {
-        method: "POST",
-        body: { items },
-        timeout: timeoutMs
-      }, apiToken);
+      const response = await this.eagleRequest(
+        baseUrl,
+        "/api/item/addFromPaths",
+        {
+          method: "POST",
+          body: { items },
+          timeout: timeoutMs,
+        },
+        apiToken,
+      );
 
       if (response.status !== "success") {
         await this.log(
@@ -284,14 +329,16 @@ export class EagleApi {
 
       return response;
     } catch (error) {
-      await this.log(`Error adding ${items.length} items from paths: ${error}`, "ERROR");
+      await this.log(
+        `Error adding ${items.length} items from paths: ${error}`,
+        "ERROR",
+      );
       return {
         status: "error",
         message: String(error),
       };
     }
   }
-
 
   static generateZoteroItemUrl(
     itemKey: string,
@@ -341,9 +388,14 @@ export async function testEagleConnection(
   try {
     if (!apiToken) return { success: false, error: "API token is required" };
 
-    const response = await EagleApi.eagleRequest(baseUrl, "/api/application/info", {
-      timeout: timeoutMs
-    }, apiToken);
+    const response = await EagleApi.eagleRequest(
+      baseUrl,
+      "/api/application/info",
+      {
+        timeout: timeoutMs,
+      },
+      apiToken,
+    );
 
     if (response?.status === "success") {
       return { success: true };
@@ -354,15 +406,19 @@ export async function testEagleConnection(
     };
   } catch (error: any) {
     let msg = "Connection failed";
-    
-    if (error.code === 401 || error.status === 401 || error.message?.includes("Unauthorized")) {
+
+    if (
+      error.code === 401 ||
+      error.status === 401 ||
+      error.message?.includes("Unauthorized")
+    ) {
       msg = "Invalid API token";
     } else if (error.message?.includes("Eagle API not reachable")) {
       msg = "Eagle API not found. Is Eagle running?";
     } else if (error.message) {
       msg = String(error.message);
     }
-    
+
     return { success: false, error: msg };
   }
 }

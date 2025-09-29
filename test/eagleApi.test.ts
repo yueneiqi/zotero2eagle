@@ -15,7 +15,11 @@ describe("Eagle API", function () {
     });
 
     it("should generate Zotero item URL correctly", function () {
-      const url = EagleApi.generateZoteroItemUrl("ABC123", "5", "annotation456");
+      const url = EagleApi.generateZoteroItemUrl(
+        "ABC123",
+        "5",
+        "annotation456",
+      );
       assert.isString(url);
       assert.include(url, "ABC123");
       assert.include(url, "page=5");
@@ -31,9 +35,10 @@ describe("Eagle API", function () {
   });
 
   describe("URL building", function () {
-
     it("should use custom API URL from parameter", async function () {
-      const baseUrl = await (EagleApi as any).buildEagleBaseUrl("http://custom.host:8080");
+      const baseUrl = await (EagleApi as any).buildEagleBaseUrl(
+        "http://custom.host:8080",
+      );
       assert.equal(baseUrl, "http://custom.host:8080");
     });
 
@@ -41,16 +46,20 @@ describe("Eagle API", function () {
       // Mock pickEagleHost to return a specific host
       const originalPickEagleHost = (EagleApi as any).pickEagleHost;
       (EagleApi as any).pickEagleHost = async () => "127.0.0.1";
-      
-      const baseUrl = await (EagleApi as any).buildEagleBaseUrl("http://localhost:8080");
+
+      const baseUrl = await (EagleApi as any).buildEagleBaseUrl(
+        "http://localhost:8080",
+      );
       assert.equal(baseUrl, "http://127.0.0.1:8080");
-      
+
       // Restore original method
       (EagleApi as any).pickEagleHost = originalPickEagleHost;
     });
 
     it("should handle invalid URL gracefully", async function () {
-      const baseUrl = await (EagleApi as any).buildEagleBaseUrl("invalid-url-format");
+      const baseUrl = await (EagleApi as any).buildEagleBaseUrl(
+        "invalid-url-format",
+      );
       assert.equal(baseUrl, "invalid-url-format");
     });
   });
@@ -58,7 +67,7 @@ describe("Eagle API", function () {
   describe("Host picking", function () {
     it("should accept custom hosts array", async function () {
       const customHosts = ["192.168.1.1", "10.0.0.1"];
-      
+
       try {
         await (EagleApi as any).pickEagleHost(customHosts);
         // If this doesn't throw, the host array was used
@@ -82,42 +91,61 @@ describe("Eagle API", function () {
       this.timeout(5000);
       const invalidItem = {
         url: "invalid-url-format",
-        name: "Test Item"
+        name: "Test Item",
       };
-      
-      const result = await EagleApi.addItemFromURL("http://locahost_invalid:442134", "", invalidItem);
-      assert.equal(result.status, "error", "Should return error status for invalid URL");
+
+      const result = await EagleApi.addItemFromURL(
+        "http://locahost_invalid:442134",
+        "",
+        invalidItem,
+      );
+      assert.equal(
+        result.status,
+        "error",
+        "Should return error status for invalid URL",
+      );
     });
 
     it.skip("should add item from URL with valid parameters", async function () {
       this.timeout(0);
-      
+
       const testItem = {
         url: "https://example.com/test-image.jpg",
         name: "Test Image Item",
         tags: ["test", "unit-test"],
         annotation: "Test image annotation",
-        rating: 5
+        rating: 5,
       };
-      
+
       const baseUrl = "http://localhost:41595";
       const apiToken = "test-token";
-      
+
       try {
-        const result = await EagleApi.addItemFromURL(baseUrl, apiToken, testItem);
-        
+        const result = await EagleApi.addItemFromURL(
+          baseUrl,
+          apiToken,
+          testItem,
+        );
+
         // Should return a valid response object
         assert.exists(result, "Should return a result");
         assert.property(result, "status", "Result should have status property");
-        
+
         if (result.status === "success") {
-          assert.equal(result.status, "success", "Should return success status");
+          assert.equal(
+            result.status,
+            "success",
+            "Should return success status",
+          );
         } else {
           // If Eagle is not running or authentication fails, should have error message
-          assert.equal(result.status, "error", "Should return error status if Eagle unavailable");
+          assert.equal(
+            result.status,
+            "error",
+            "Should return error status if Eagle unavailable",
+          );
           assert.exists(result.message, "Should have error message");
         }
-        
       } catch (error) {
         // Network or connection errors are acceptable in test environment
         assert.exists(error, "Error should be defined");
@@ -131,27 +159,38 @@ describe("Eagle API", function () {
         website: "https://example.com",
         annotation: "Test path annotation",
         tags: ["test", "unit-test", "path"],
-        folderId: "test-folder-id"
+        folderId: "test-folder-id",
       };
-      
+
       const baseUrl = "http://localhost:41595";
       const apiToken = "test-token";
-      
+
       try {
-        const result = await EagleApi.addItemFromPath(baseUrl, apiToken, testItem);
-        
+        const result = await EagleApi.addItemFromPath(
+          baseUrl,
+          apiToken,
+          testItem,
+        );
+
         // Should return a valid response object
         assert.exists(result, "Should return a result");
         assert.property(result, "status", "Result should have status property");
-        
+
         if (result.status === "success") {
-          assert.equal(result.status, "success", "Should return success status");
+          assert.equal(
+            result.status,
+            "success",
+            "Should return success status",
+          );
         } else {
           // If Eagle is not running or authentication fails, should have error message
-          assert.equal(result.status, "error", "Should return error status if Eagle unavailable");
+          assert.equal(
+            result.status,
+            "error",
+            "Should return error status if Eagle unavailable",
+          );
           assert.exists(result.message, "Should have error message");
         }
-        
       } catch (error) {
         // Network or connection errors are acceptable in test environment
         assert.exists(error, "Error should be defined");
@@ -162,26 +201,38 @@ describe("Eagle API", function () {
       this.timeout(1000);
       const testItem = {
         path: "/valid/path/to/file.jpg",
-        name: "Test Auth Error Path"
+        name: "Test Auth Error Path",
       };
-      
+
       const baseUrl = "http://localhost:41595";
       const invalidToken = "invalid-token";
-      
-      const result = await EagleApi.addItemFromPath(baseUrl, invalidToken, testItem, 300);
-      assert.equal(result.status, "error", "Should return error status for invalid token");
-      assert.include(result.message, "Request timed out", "Should have appropriate error message");
+
+      const result = await EagleApi.addItemFromPath(
+        baseUrl,
+        invalidToken,
+        testItem,
+        300,
+      );
+      assert.equal(
+        result.status,
+        "error",
+        "Should return error status for invalid token",
+      );
+      assert.include(
+        result.message,
+        "Request timed out",
+        "Should have appropriate error message",
+      );
     });
   });
 
   describe("testEagleConnection", function () {
     it.skip("should handle connection with valid parameters", async function () {
-      
       const baseUrl = "http://localhost:41595";
       const apiToken = "valid-token";
-      
+
       const result = await testEagleConnection(baseUrl, apiToken);
-      
+
       assert.exists(result, "Should return a result");
       assert.property(result, "success", "Result should have success property");
       assert.isTrue(result.success, "Success should be boolean");
@@ -189,16 +240,20 @@ describe("Eagle API", function () {
 
     it("should handle unreachable Eagle API", async function () {
       this.timeout(1000);
-      
+
       const baseUrl = "http://unreachable-host:41595";
       const apiToken = "test-token";
-      
+
       const result = await testEagleConnection(baseUrl, apiToken, 100);
-      
+
       assert.exists(result, "Should return a result");
       assert.property(result, "success", "Result should have success property");
-      assert.equal(result.success, false, "Should return false for unreachable host");
-      
+      assert.equal(
+        result.success,
+        false,
+        "Should return false for unreachable host",
+      );
+
       if (result.error) {
         assert.isString(result.error, "Error should be a string");
       }
@@ -206,13 +261,17 @@ describe("Eagle API", function () {
 
     it("should respect custom timeout", async function () {
       this.timeout(200);
-      
+
       const baseUrl = "http://192.168.999.999:41595"; // Non-routable IP
       const apiToken = "test-token";
       const customTimeout = 100; // 0.1 second
-      
-      const result = await testEagleConnection(baseUrl, apiToken, customTimeout);
-      
+
+      const result = await testEagleConnection(
+        baseUrl,
+        apiToken,
+        customTimeout,
+      );
+
       assert.exists(result, "Should return a result");
       assert.equal(result.success, false, "Should return false for timeout");
     });
