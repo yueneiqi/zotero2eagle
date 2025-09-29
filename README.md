@@ -50,6 +50,8 @@ Configure a local backup directory for image files:
 
 ## Usage
 
+![Demo](doc/data/demo.gif)
+
 1. Open a PDF in Zotero's PDF reader
 2. Create image annotations (highlight and extract image regions)
 3. Images are automatically processed and saved to Eagle
