@@ -106,6 +106,7 @@ describe("Eagle API", function () {
       );
     });
 
+    // eslint-disable-next-line mocha/no-pending-tests
     it.skip("should add item from URL with valid parameters", async function () {
       this.timeout(0);
 
@@ -152,6 +153,7 @@ describe("Eagle API", function () {
       }
     });
 
+    // eslint-disable-next-line mocha/no-pending-tests
     it.skip("should add item from path with valid parameters", async function () {
       const testItem = {
         path: "/Users/seven/test.png",
@@ -227,6 +229,7 @@ describe("Eagle API", function () {
   });
 
   describe("testEagleConnection", function () {
+    // eslint-disable-next-line mocha/no-pending-tests
     it.skip("should handle connection with valid parameters", async function () {
       const baseUrl = "http://localhost:41595";
       const apiToken = "valid-token";
