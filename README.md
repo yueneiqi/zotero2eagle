@@ -1,5 +1,9 @@
 # Zotero2Eagle Integration Plugin
 
+<p align="center">
+  <img src="addon/content/icons/zotero2eagle.png" alt="Zotero2Eagle Logo" width="128"/>
+</p>
+
 [![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 
 A Zotero plugin that seamlessly integrates with [Eagle](https://eagle.cool/), allowing you to save PDF image annotations directly to your Eagle library for better visual content management.

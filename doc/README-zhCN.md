@@ -1,5 +1,9 @@
 # Zotero2Eagle 集成插件
 
+<p align="center">
+  <img src="../addon/content/icons/zotero2eagle.png" alt="Zotero2Eagle Logo" width="128"/>
+</p>
+
 [![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 
 一个 Zotero 插件，可与 [Eagle](https://eagle.cool/) 无缝集成，让您可以将 PDF 图片标注直接保存到您的 Eagle 库中，以实现更好的视觉内容管理。
