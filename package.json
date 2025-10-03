@@ -1,7 +1,7 @@
 {
   "name": "zotero2eagle",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Zotero to Eagle integration plugin",
   "config": {
     "addonName": "Zotero2Eagle",
