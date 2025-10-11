@@ -73,7 +73,7 @@
 
 - [Node.js](https://nodejs.org/) (LTS 版本)
 - [Git](https://git-scm.com/)
-- [Zotero Beta](https://www.zotero.org/support/beta_builds)
+- [Zotero 7](https://www.zotero.org/download/)
 
 ### 安装与设置
 

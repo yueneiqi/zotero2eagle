@@ -12,13 +12,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-github-name/zotero2eagle.git"
+    "url": "git+https://github.com/yueneiqi/zotero2eagle.git"
   },
-  "author": "Your Name",
+  "author": "bear&cat",
   "bugs": {
-    "url": "https://github.com/your-github-name/zotero2eagle/issues"
+    "url": "https://github.com/yueneiqi/zotero2eagle/issues"
   },
-  "homepage": "https://github.com/your-github-name/zotero2eagle#readme",
+  "homepage": "https://github.com/yueneiqi/zotero2eagle#readme",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "start": "zotero-plugin serve",

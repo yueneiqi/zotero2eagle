@@ -73,7 +73,7 @@ Configure a local backup directory for image files:
 
 - [Node.js](https://nodejs.org/) (LTS version)
 - [Git](https://git-scm.com/)
-- [Zotero Beta](https://www.zotero.org/support/beta_builds)
+- [Zotero 7](https://www.zotero.org/download/)
 
 ### Setup
 
