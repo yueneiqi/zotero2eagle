@@ -16,12 +16,14 @@ class PDFButton {
   activeReader: any | null;
   annotationObserverID: string | null;
   annotationObserverTimer: number | null;
+  autoAnnotationObserverID: string | null;
   annotationScope: {
     libraryID?: number;
     tabID?: string;
     itemID?: number;
     itemKey?: string;
   } | null;
+  processedAnnotations: Map<string, number>;
 
   constructor() {
     this.id = null;
@@ -33,7 +35,9 @@ class PDFButton {
     this.activeReader = null;
     this.annotationObserverID = null;
     this.annotationObserverTimer = null;
+    this.autoAnnotationObserverID = null;
     this.annotationScope = null;
+    this.processedAnnotations = new Map();
   }
 
   init({
@@ -234,6 +238,87 @@ class PDFButton {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  private claimAnnotation(annotationId: string, source: string): boolean {
+    const now = Date.now();
+    const lastSeen = this.processedAnnotations.get(annotationId);
+    const maxAgeMs = 60_000;
+    if (lastSeen && now - lastSeen < maxAgeMs) {
+      this.log(
+        `Skipping duplicate annotation ${annotationId} from ${source}`,
+        "DEBUG",
+      );
+      return false;
+    }
+
+    this.processedAnnotations.set(annotationId, now);
+
+    if (this.processedAnnotations.size > 200) {
+      for (const [key, ts] of this.processedAnnotations) {
+        if (now - ts > 5 * 60_000) {
+          this.processedAnnotations.delete(key);
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private async handleImageAnnotation(
+    item: any,
+    source: string,
+    skipLogLevel: "INFO" | "WARN" | "ERROR" | "DEBUG" = "INFO",
+  ): Promise<boolean> {
+    const annotationId = item.key;
+    const annotationType = item.annotationType;
+    if (annotationType !== "image") {
+      await this.log(
+        `Skipping non-image annotation ${annotationId} while handling ${source}`,
+        skipLogLevel,
+      );
+      return false;
+    }
+
+    if (!this.claimAnnotation(annotationId, source)) {
+      return false;
+    }
+
+    await this.log(
+      `New image annotation detected with ID: ${annotationId}, Source: ${source}`,
+    );
+
+    // Get the parent item ID (the PDF item)
+    const parentItem = item.parentItem;
+    const parentItemId = parentItem ? parentItem.id : "Unknown";
+    const parentItemKey = parentItem ? parentItem.key : "Unknown"; // This is the short key like "F5BWVR4N"
+
+    // Get page number directly from the annotation
+    let pageNumber = "Unknown";
+    try {
+      // Annotations store page information in their position property
+      const position = item.annotationPosition;
+      if (position) {
+        // Parse the position JSON to extract page index
+        const positionObj = JSON.parse(position);
+        if (positionObj && typeof positionObj.pageIndex === "number") {
+          pageNumber = (positionObj.pageIndex + 1).toString(); // Convert to 1-based index
+        }
+      }
+    } catch (e) {
+      this.log(`Error getting page number from annotation: ${e}`);
+    }
+
+    await this.showAnnotationDetails(
+      item,
+      annotationId,
+      annotationType,
+      parentItemId.toString(),
+      parentItemKey,
+      pageNumber,
+    );
+
+    return true;
+  }
+
   // Register an observer to watch for new annotations
   registerAnnotationObserver(
     browserWindow: Window,
@@ -299,51 +384,14 @@ class PDFButton {
                 } catch (err) {
                   // Ignore errors reading parent item scope; proceed without scoping
                 }
-                const annotationId = item.key;
-                const annotationType = item.annotationType;
-                if (annotationType !== "image") {
-                  await this.log(
-                    `Skipping non-image annotation ${annotationId} while waiting for Select Area`,
-                    "DEBUG",
-                  );
+                const handled = await this.handleImageAnnotation(
+                  item,
+                  "select-area",
+                  "DEBUG",
+                );
+                if (!handled) {
                   continue;
                 }
-                await this.log(
-                  `New annotation detected with ID: ${annotationId}, Type: ${annotationType}`,
-                );
-
-                // Get the parent item ID (the PDF item)
-                const parentItem = item.parentItem;
-                const parentItemId = parentItem ? parentItem.id : "Unknown";
-                const parentItemKey = parentItem ? parentItem.key : "Unknown"; // This is the short key like "F5BWVR4N"
-
-                // Get page number directly from the annotation
-                let pageNumber = "Unknown";
-                try {
-                  // Annotations store page information in their position property
-                  const position = item.annotationPosition;
-                  if (position) {
-                    // Parse the position JSON to extract page index
-                    const positionObj = JSON.parse(position);
-                    if (
-                      positionObj &&
-                      typeof positionObj.pageIndex === "number"
-                    ) {
-                      pageNumber = (positionObj.pageIndex + 1).toString(); // Convert to 1-based index
-                    }
-                  }
-                } catch (e) {
-                  this.log(`Error getting page number from annotation: ${e}`);
-                }
-
-                await this.showAnnotationDetails(
-                  item,
-                  annotationId,
-                  annotationType,
-                  parentItemId.toString(),
-                  parentItemKey,
-                  pageNumber,
-                );
 
                 // Note: Image capture will be handled by the ImageSaver utility
                 // Unregister the observer after finding the annotation
@@ -384,6 +432,55 @@ class PDFButton {
       }
       this.annotationObserverTimer = null;
     }, 30000) as unknown as number;
+  }
+
+  private registerAutoAnnotationObserver() {
+    if (this.autoAnnotationObserverID) return;
+
+    const annotationCallback = {
+      notify: async (
+        event: string,
+        type: string,
+        ids: Array<string | number>,
+        extraData: { [key: string]: any },
+      ) => {
+        if (type !== "item") return;
+        if (event !== "add") return;
+
+        for (const id of ids) {
+          try {
+            const item = await Zotero.Items.getAsync(id as number);
+            if (!item || !item.isAnnotation()) continue;
+
+            // Only auto-handle image annotations
+            if (item.annotationType !== "image") continue;
+
+            const dataForId =
+              extraData?.[id as any] ??
+              extraData?.[String(id)] ??
+              extraData;
+            const instanceID = dataForId?.instanceID;
+            if (!instanceID) {
+              await this.log(
+                `Auto observer missing instanceID for annotation ${item.key}`,
+                "DEBUG",
+              );
+            }
+
+            await this.handleImageAnnotation(item, "auto-observer");
+          } catch (e) {
+            this.log(`Error processing item ${id} in auto observer: ${e}`);
+          }
+        }
+      },
+    };
+
+    this.autoAnnotationObserverID = Zotero.Notifier.registerObserver(
+      annotationCallback,
+      ["item"],
+    );
+
+    this.log("Registered auto annotation observer");
   }
 
   // Show the annotation details (ID, type, item ID, item key, and page number) in a popup
@@ -522,9 +619,15 @@ class PDFButton {
     if (this.annotationObserverID) {
       Zotero.Notifier.unregisterObserver(this.annotationObserverID);
     }
+    if (this.autoAnnotationObserverID) {
+      Zotero.Notifier.unregisterObserver(this.autoAnnotationObserverID);
+      this.autoAnnotationObserverID = null;
+    }
+    this.processedAnnotations.clear();
   }
 
   async main() {
+    this.registerAutoAnnotationObserver();
     // Add proxy to existing tabs
     setTimeout(async () => {
       await this.addAllButtons();

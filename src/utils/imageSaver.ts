@@ -91,6 +91,17 @@ export class ImageSaver {
       const cacheRoot = this.joinPath(dataDir, "cache");
       const subDirs = ["library", "annotations"];
       const extensions = ["png", "jpg", "jpeg"];
+      try {
+        const libraryID = item?.libraryID;
+        if (libraryID && (Zotero as any).Libraries?.get) {
+          const library = (Zotero as any).Libraries.get(libraryID);
+          if (library?.libraryType === "group" && library?.groupID) {
+            subDirs.push(this.joinPath("groups", `${library.groupID}`));
+          }
+        }
+      } catch (e) {
+        // Ignore library lookup failures and fall back to defaults
+      }
       for (const subDir of subDirs) {
         for (const ext of extensions) {
           candidates.add(
