@@ -92,10 +92,10 @@
   <!-- Test Connection Button -->
   <hbox class="z2e-row">
     <hbox class="z2e-actions">
-      <button
+      <html:button
         id="__addonRef__-test-connection"
         data-l10n-id="pref-test-connection"
-      ></button>
+      ></html:button>
       <html:span id="__addonRef__-connection-status"></html:span>
     </hbox>
   </hbox>
@@ -145,14 +145,15 @@
   outline: none; } /* Section header */ .z2e-section-title { font-weight: 700;
   font-size: 15px; } .z2e-divider { height: 1px; background: currentColor;
   opacity: .15; margin: 6px 0 12px; } /* Actions and buttons */ .z2e-actions {
-  align-items: center; margin-top: 6px; } button[id*="__addonRef__"] { display:
-  inline-flex; align-items: center; justify-content: center; padding: 10px 16px;
-  background: #0060df; color: #fff !important; border: none; border-radius: 4px;
-  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
-  transition: background-color 0.2s ease; line-height: 1; white-space: nowrap; }
-  button[id*="__addonRef__"]:hover { background: #0054c2; }
-  button[id*="__addonRef__"]:active { background: #003eaa; }
-  button[id*="__addonRef__"]:disabled { opacity: .6; cursor: not-allowed; } /*
+  align-items: center; margin-top: 6px; } html|button[id*="__addonRef__"] {
+  display: inline-flex; align-items: center; justify-content: center; padding:
+  10px 16px; background: #0060df; color: #fff !important; border: none;
+  border-radius: 4px; font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: background-color 0.2s ease; line-height: 1;
+  white-space: nowrap; } html|button[id*="__addonRef__"]:hover {
+  background: #0054c2; } html|button[id*="__addonRef__"]:active {
+  background: #003eaa; } html|button[id*="__addonRef__"]:disabled { opacity:
+  .6; cursor: not-allowed; } /* Status text */ html|span[id*="__addonRef__"][id*="connection-status"] {
   Status text */ html|span[id*="__addonRef__"][id*="connection-status"] {
   margin-left: 12px; font-size: 14px; font-weight: 500; } /* Footer help */
   html|label[data-l10n-id*="pref-help"] { font-size: 12px; color: #888;
