@@ -4,7 +4,7 @@
   <img src="addon/content/icons/zotero2eagle.png" alt="Zotero2Eagle Logo" width="128"/>
 </p>
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
+[![zotero target version](https://img.shields.io/badge/Zotero-7%20or%208-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 
 A Zotero plugin that seamlessly integrates with [Eagle](https://eagle.cool/), allowing you to save PDF image annotations directly to your Eagle library for better visual content management.
 
@@ -73,7 +73,7 @@ Configure a local backup directory for image files:
 
 - [Node.js](https://nodejs.org/) (LTS version)
 - [Git](https://git-scm.com/)
-- [Zotero 7](https://www.zotero.org/download/)
+- [Zotero 7 or Zotero 8](https://www.zotero.org/download/) or [Zotero 8 (beta builds)](https://www.zotero.org/support/beta_builds)
 
 ### Setup
 

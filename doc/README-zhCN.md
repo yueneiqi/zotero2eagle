@@ -4,7 +4,7 @@
   <img src="../addon/content/icons/zotero2eagle.png" alt="Zotero2Eagle Logo" width="128"/>
 </p>
 
-[![zotero target version](https://img.shields.io/badge/Zotero-7-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
+[![zotero target version](https://img.shields.io/badge/Zotero-7%20or%208-green?style=flat-square&logo=zotero&logoColor=CC2936)](https://www.zotero.org)
 
 一个 Zotero 插件，可与 [Eagle](https://eagle.cool/) 无缝集成，让您可以将 PDF 图片标注直接保存到您的 Eagle 库中，以实现更好的视觉内容管理。
 
@@ -73,7 +73,7 @@
 
 - [Node.js](https://nodejs.org/) (LTS 版本)
 - [Git](https://git-scm.com/)
-- [Zotero 7](https://www.zotero.org/download/)
+- [Zotero 7 或 Zotero 8](https://www.zotero.org/download/) 或 [Zotero 8（测试版构建）](https://www.zotero.org/support/beta_builds)
 
 ### 安装与设置
 
