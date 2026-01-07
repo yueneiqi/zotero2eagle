@@ -22,6 +22,87 @@ export interface ImageSaveResult {
 }
 
 export class ImageSaver {
+  private static getPathSeparator(): string {
+    return Zotero.isWin ? "\\" : "/";
+  }
+
+  private static joinPath(basePath: string, ...parts: string[]): string {
+    const separator = this.getPathSeparator();
+    let path = basePath.replace(/[\\/]+$/, "");
+    for (const part of parts) {
+      const cleaned = part.replace(/^[\\/]+/, "");
+      path = `${path}${separator}${cleaned}`;
+    }
+    return path;
+  }
+
+  private static getZoteroDataDirectory(): string | null {
+    try {
+      const dataDir = (Zotero as any).DataDirectory?.dir;
+      if (dataDir && typeof dataDir === "string") {
+        return dataDir;
+      }
+      const dataDirFile = (Zotero as any).DataDirectory?.get?.();
+      if (dataDirFile?.path) {
+        return dataDirFile.path;
+      }
+      const dataDirPath = (Zotero as any).DataDirectory?.getDirectory?.();
+      if (typeof dataDirPath === "string") {
+        return dataDirPath;
+      }
+    } catch (e) {
+      // Fall through to default path
+    }
+
+    const homeDir = this.getHomeDirectory();
+    if (!homeDir) return null;
+    return this.joinPath(homeDir, "Zotero");
+  }
+
+  private static getCachePathCandidates(
+    annotationId: string,
+    item?: any,
+  ): string[] {
+    const candidates = new Set<string>();
+
+    // Prefer Zotero's internal API when available
+    try {
+      const annotationsApi = (Zotero as any).Annotations;
+      const getCachePath = annotationsApi?.getCacheImagePath;
+      if (typeof getCachePath === "function") {
+        const apiInputs = [item, annotationId].filter(Boolean);
+        for (const input of apiInputs) {
+          try {
+            const apiPath = getCachePath(input);
+            if (typeof apiPath === "string" && apiPath.trim()) {
+              candidates.add(apiPath);
+            }
+          } catch (e) {
+            // Ignore API failures and fall back to known paths
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore and fall back to known paths
+    }
+
+    const dataDir = this.getZoteroDataDirectory();
+    if (dataDir) {
+      const cacheRoot = this.joinPath(dataDir, "cache");
+      const subDirs = ["library", "annotations"];
+      const extensions = ["png", "jpg", "jpeg"];
+      for (const subDir of subDirs) {
+        for (const ext of extensions) {
+          candidates.add(
+            this.joinPath(cacheRoot, subDir, `${annotationId}.${ext}`),
+          );
+        }
+      }
+    }
+
+    return Array.from(candidates);
+  }
+
   static async log(
     msg: string,
     level: "INFO" | "WARN" | "ERROR" | "DEBUG" = "INFO",
@@ -132,6 +213,7 @@ export class ImageSaver {
         imageData,
         expandedOutputDir,
         annotationData,
+        item,
       );
 
       if (filePath) {
@@ -195,41 +277,72 @@ export class ImageSaver {
 
   private static async waitForCacheImage(
     annotationId: string,
+    item?: any,
+    options?: {
+      maxWaitTimeMs?: number;
+      checkIntervalMs?: number;
+      stableMs?: number;
+    },
   ): Promise<string | null> {
     try {
-      // Build the expected cache path: ~/Zotero/cache/library/<annotation_id>.png
-      const homeDir = this.getHomeDirectory();
-      if (!homeDir) {
-        await this.log("Could not determine home directory", "ERROR");
+      const {
+        maxWaitTimeMs = 30000,
+        checkIntervalMs = 250,
+        stableMs = 500,
+      } = options || {};
+
+      const candidates = this.getCachePathCandidates(annotationId, item);
+      if (candidates.length === 0) {
+        await this.log("No cache path candidates resolved", "ERROR");
         return null;
       }
 
-      const cachePath = `${homeDir}/Zotero/cache/library/${annotationId}.png`;
-      await this.log(`Looking for cache file at: ${cachePath}`);
+      await this.log(
+        `Looking for cache file for annotation ${annotationId} (candidates: ${candidates.length})`,
+      );
 
-      // Wait up to 10 seconds for the cache file to appear
-      const maxWaitTime = 10000; // 10 seconds
-      const checkInterval = 200; // Check every 200ms
-      const maxAttempts = maxWaitTime / checkInterval;
+      const startTime = Date.now();
+      const lastSizes = new Map<string, number>();
+      const stableSince = new Map<string, number>();
 
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        try {
-          const cacheFile = Zotero.File.pathToFile(cachePath);
-          if (cacheFile.exists() && cacheFile.isFile()) {
-            await this.log(
-              `Cache file found after ${attempt * checkInterval}ms`,
-            );
-            return cachePath;
+      while (Date.now() - startTime < maxWaitTimeMs) {
+        for (const cachePath of candidates) {
+          try {
+            const cacheFile = Zotero.File.pathToFile(cachePath);
+            if (cacheFile.exists() && cacheFile.isFile()) {
+              const fileSize = cacheFile.fileSize;
+              if (fileSize > 0) {
+                const previousSize = lastSizes.get(cachePath);
+                if (previousSize === fileSize) {
+                  if (!stableSince.has(cachePath)) {
+                    stableSince.set(cachePath, Date.now());
+                  }
+                  const stableFor =
+                    Date.now() - (stableSince.get(cachePath) || 0);
+                  if (stableFor >= stableMs) {
+                    await this.log(
+                      `Cache file found after ${Date.now() - startTime}ms: ${cachePath}`,
+                    );
+                    return cachePath;
+                  }
+                } else {
+                  lastSizes.set(cachePath, fileSize);
+                  stableSince.set(cachePath, Date.now());
+                }
+              }
+            }
+          } catch (e) {
+            // File doesn't exist yet, continue waiting
           }
-        } catch (e) {
-          // File doesn't exist yet, continue waiting
         }
 
-        // Wait before next check
-        await new Promise((resolve) => setTimeout(resolve, checkInterval));
+        await new Promise((resolve) => setTimeout(resolve, checkIntervalMs));
       }
 
-      await this.log(`Cache file not found after ${maxWaitTime}ms`, "WARN");
+      await this.log(
+        `Cache file not found after ${maxWaitTimeMs}ms`,
+        "WARN",
+      );
       return null;
     } catch (error) {
       await this.log(`Error waiting for cache image: ${error}`, "ERROR");
@@ -264,7 +377,7 @@ export class ImageSaver {
       await this.log(`Waiting for cache image for annotation ${annotationId}`);
 
       // Wait for the cache PNG file to be created
-      const cachePath = await this.waitForCacheImage(annotationId);
+      const cachePath = await this.waitForCacheImage(annotationId, item);
       if (!cachePath) {
         await this.log("Cache image file not found", "WARN");
         return null;
@@ -305,10 +418,11 @@ export class ImageSaver {
     annotationId: string,
     outputDir: string,
     annotationData: ImageAnnotationData,
+    item?: any,
   ): Promise<string | null> {
     try {
       // Wait for cache file to be created
-      const cachePath = await this.waitForCacheImage(annotationId);
+      const cachePath = await this.waitForCacheImage(annotationId, item);
       if (!cachePath) {
         await this.log("Cache file not available for copying", "ERROR");
         return null;
@@ -378,6 +492,7 @@ export class ImageSaver {
     imageDataUrl: string,
     outputDir: string,
     annotationData: ImageAnnotationData,
+    item?: any,
   ): Promise<string | null> {
     // For compatibility, we'll try the direct copy method first
     // If that fails, fall back to the data URL method
@@ -388,6 +503,7 @@ export class ImageSaver {
         annotationData.annotationId,
         outputDir,
         annotationData,
+        item,
       );
       if (copyResult) {
         return copyResult;
@@ -530,6 +646,7 @@ export class ImageSaver {
       // Wait for cache image to be available
       const cachePath = await this.waitForCacheImage(
         annotationData.annotationId,
+        item,
       );
       if (!cachePath) {
         await this.log(

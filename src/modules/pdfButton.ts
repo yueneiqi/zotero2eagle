@@ -16,7 +16,12 @@ class PDFButton {
   activeReader: any | null;
   annotationObserverID: string | null;
   annotationObserverTimer: number | null;
-  annotationScope: { libraryID?: number; tabID?: string } | null;
+  annotationScope: {
+    libraryID?: number;
+    tabID?: string;
+    itemID?: number;
+    itemKey?: string;
+  } | null;
 
   constructor() {
     this.id = null;
@@ -55,7 +60,12 @@ class PDFButton {
   async proxySelectAreaButton(
     browserWindow: Window,
     mainWindow?: _ZoteroTypes.MainWindow,
-    scope?: { libraryID?: number; tabID?: string },
+    scope?: {
+      libraryID?: number;
+      tabID?: string;
+      itemID?: number;
+      itemKey?: string;
+    },
   ) {
     // Check if we've already proxied the button
     if (
@@ -86,15 +96,23 @@ class PDFButton {
     selectAreaButton.addEventListener("click", () => {
       this.log("Proxy: Select Area button clicked");
       // Resolve scope lazily (current reader tab and its library)
-      let resolvedScope: { libraryID?: number; tabID?: string } | undefined =
-        scope;
+      let resolvedScope:
+        | {
+            libraryID?: number;
+            tabID?: string;
+            itemID?: number;
+            itemKey?: string;
+          }
+        | undefined = scope;
       try {
         if (!resolvedScope && mainWindow) {
           const tabID = (mainWindow as any).Zotero_Tabs?.selectedID;
           if (tabID) {
             const reader = Zotero.Reader.getByTabID(tabID);
             const libraryID = (reader as any)?._item?.libraryID;
-            resolvedScope = { libraryID, tabID };
+            const itemID = (reader as any)?._item?.id;
+            const itemKey = (reader as any)?._item?.key;
+            resolvedScope = { libraryID, tabID, itemID, itemKey };
           }
         }
       } catch (e) {
@@ -219,7 +237,12 @@ class PDFButton {
   // Register an observer to watch for new annotations
   registerAnnotationObserver(
     browserWindow: Window,
-    scope?: { libraryID?: number; tabID?: string },
+    scope?: {
+      libraryID?: number;
+      tabID?: string;
+      itemID?: number;
+      itemKey?: string;
+    },
   ) {
     this.log("Registering/refreshing annotation observer");
 
@@ -228,6 +251,9 @@ class PDFButton {
     if (scope?.libraryID !== undefined)
       this.annotationScope.libraryID = scope.libraryID;
     if (scope?.tabID !== undefined) this.annotationScope.tabID = scope.tabID;
+    if (scope?.itemID !== undefined) this.annotationScope.itemID = scope.itemID;
+    if (scope?.itemKey !== undefined)
+      this.annotationScope.itemKey = scope.itemKey;
 
     // Register a Zotero notifier observer for item additions/changes
     const annotationCallback = {
@@ -255,8 +281,33 @@ class PDFButton {
                 } catch (err) {
                   // Ignore errors reading library scope; proceed without scoping
                 }
+                // Scope by parent item if available (ensures we capture the active reader item)
+                try {
+                  const parentItem = item.parentItem;
+                  if (
+                    this.annotationScope?.itemID !== undefined &&
+                    parentItem?.id !== this.annotationScope.itemID
+                  ) {
+                    continue;
+                  }
+                  if (
+                    this.annotationScope?.itemKey !== undefined &&
+                    parentItem?.key !== this.annotationScope.itemKey
+                  ) {
+                    continue;
+                  }
+                } catch (err) {
+                  // Ignore errors reading parent item scope; proceed without scoping
+                }
                 const annotationId = item.key;
                 const annotationType = item.annotationType;
+                if (annotationType !== "image") {
+                  await this.log(
+                    `Skipping non-image annotation ${annotationId} while waiting for Select Area`,
+                    "DEBUG",
+                  );
+                  continue;
+                }
                 await this.log(
                   `New annotation detected with ID: ${annotationId}, Type: ${annotationType}`,
                 );
@@ -332,7 +383,7 @@ class PDFButton {
         this.log("Annotation observer timeout - unregistered");
       }
       this.annotationObserverTimer = null;
-    }, 10000) as unknown as number;
+    }, 30000) as unknown as number;
   }
 
   // Show the annotation details (ID, type, item ID, item key, and page number) in a popup
@@ -501,6 +552,8 @@ class PDFButton {
             this.proxySelectAreaButton(browserWindow, undefined, {
               libraryID: (reader as any)?._item?.libraryID,
               tabID: reader.tabID,
+              itemID: (reader as any)?._item?.id,
+              itemKey: (reader as any)?._item?.key,
             }).catch((error) =>
               this.log(`Error proxying button: ${error}`, "ERROR"),
             );
