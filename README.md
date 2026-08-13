@@ -1,3 +1,5 @@
+
+
 # Zotero2Eagle Integration Plugin
 
 <p align="center">
@@ -79,7 +81,7 @@ Configure a local backup directory for image files:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/zotero2eagle.git
+git clone https://github.com/yueneiqi/zotero2eagle.git
 cd zotero2eagle
 
 # Install dependencies
